@@ -1,47 +1,76 @@
-# Uzzap
+<div align="center">
+  <img src="app/src/main/res/drawable/ic_uzzap_logo.jpg" alt="Uzzap logo" width="128" />
+  <h1>Uzzap</h1>
+  <p><strong>A modern Android instant messenger for conversations, communities, and connections.</strong></p>
+  <p>
+    <a href="https://developer.android.com/"><img src="https://img.shields.io/badge/Android-API_24%2B-3DDC84?logo=android&amp;logoColor=white" alt="Android API 24+" /></a>
+    <a href="https://kotlinlang.org/"><img src="https://img.shields.io/badge/Kotlin-2.2.10-7F52FF?logo=kotlin&amp;logoColor=white" alt="Kotlin 2.2.10" /></a>
+    <a href="https://developer.android.com/compose"><img src="https://img.shields.io/badge/Jetpack_Compose-Material_3-4285F4?logo=jetpackcompose&amp;logoColor=white" alt="Jetpack Compose Material 3" /></a>
+    <a href="https://firebase.google.com/"><img src="https://img.shields.io/badge/Firebase-Auth_%26_Firestore-FFCA28?logo=firebase&amp;logoColor=black" alt="Firebase Authentication and Firestore" /></a>
+  </p>
+</div>
 
-Uzzap is an Android instant-messaging app built with Kotlin and Jetpack Compose. It includes buddy lists, direct chats, Philippine regional chatrooms, profiles, presence controls, and messaging preferences.
+---
 
-## Tech stack
+Uzzap brings buddy lists, direct messaging, and Philippine regional chatrooms into one Compose-powered Android experience. Users can manage their profile and presence, join communities, and keep conversations synced through Firebase.
 
-- Kotlin and Jetpack Compose with Material 3
-- Room for local persistence
-- Firebase Authentication and Cloud Firestore
-- Gradle 9.3.1 and Android Gradle Plugin 9.1.1
-- Robolectric, Compose UI Test, and Roborazzi for testing
+## ✨ Features
 
-## Requirements
+| Connect | Converse | Personalize |
+| --- | --- | --- |
+| Buddy lists and requests | Direct and regional room chats | Profiles and presence controls |
+| Search and category filters | Reply, buzz, and reporting tools | Notification and sound preferences |
+| Online status indicators | Local history with Room | Light and dark themes |
+
+## 🧰 Tech stack
+
+| Area | Technology |
+| --- | --- |
+| UI | Kotlin, Jetpack Compose, Material 3 |
+| Architecture | ViewModel, StateFlow, repository pattern |
+| Local data | Room |
+| Cloud | Firebase Authentication and Cloud Firestore |
+| Build | Gradle 9.3.1, Android Gradle Plugin 9.1.1 |
+| Tests | JUnit, Robolectric, Compose UI Test, Roborazzi |
+
+## 🚀 Getting started
+
+### Requirements
 
 - JDK 21
-- Android SDK Platform 36
-- Android Build Tools 36.x
-- Gradle 9.3.1, or Android Studio with an equivalent Gradle setup
+- Android SDK Platform 36 and Build Tools 36.x
+- Gradle 9.3.1 or Android Studio with an equivalent Gradle setup
 - An Android device or emulator running API 24 or later
 
-The repository contains Gradle wrapper properties but does not currently include the `gradlew` launcher or wrapper JAR. Use a locally installed Gradle 9.3.1 until those files are restored.
+> [!NOTE]
+> The repository currently includes Gradle wrapper properties but not the `gradlew` launcher or wrapper JAR. Use a locally installed Gradle 9.3.1 until those files are restored.
 
-## Firebase setup
+### Configure Firebase
 
-Firebase-backed sign-in and messaging require an Android Firebase project:
+Firebase-backed sign-in and messaging need an Android Firebase project:
 
 1. Register the application ID `com.aistudio.uzzap.kxvtpm` in Firebase.
-2. Download that project's `google-services.json`.
+2. Download the project's `google-services.json`.
 3. Place it at `app/google-services.json`.
-4. Enable Authentication and Cloud Firestore for the project.
+4. Enable Authentication and Cloud Firestore.
 
-Do not commit `google-services.json` or production credentials. The debug APK can compile without the file, but Firebase features will not work correctly at runtime.
+> [!IMPORTANT]
+> Keep `google-services.json` and production credentials out of version control. The debug APK compiles without this file, but Firebase features will not work correctly at runtime.
 
-## Build
-
-From the repository root:
+### Build and run
 
 ```bash
 gradle :app:assembleDebug
 ```
 
-The resulting APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
+The debug APK is generated at `app/build/outputs/apk/debug/app-debug.apk`. Install it through Android Studio or with ADB:
 
-If the build host has limited memory, use a bounded invocation:
+```bash
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+<details>
+<summary><strong>Building on a memory-constrained machine</strong></summary>
 
 ```bash
 gradle --no-daemon --no-configuration-cache \
@@ -51,26 +80,28 @@ gradle --no-daemon --no-configuration-cache \
   :app:assembleDebug
 ```
 
-## Test
+</details>
 
-Run the host-side unit and Robolectric tests with:
+## 🧪 Testing
+
+Run host-side unit and Robolectric tests:
 
 ```bash
 gradle --no-configuration-cache :app:testDebugUnitTest
 ```
 
-Instrumentation tests require a connected Android device or emulator:
+Run instrumentation tests with a connected device or emulator:
 
 ```bash
 gradle :app:connectedDebugAndroidTest
 ```
 
-## Project structure
+## 🗂️ Project structure
 
 ```text
 app/src/main/java/com/example/
 ├── auth/           Authentication integration
-├── data/           Local models, Room storage, and Firestore services
+├── data/           Models, Room storage, and Firestore services
 ├── ui/components/  Shared Compose components
 ├── ui/screens/     Application screens
 ├── ui/theme/       Colors, typography, and app theme
@@ -78,4 +109,4 @@ app/src/main/java/com/example/
 └── MainActivity.kt Application entry point and top-level navigation
 ```
 
-Firestore security rules and indexes are stored in `firestore.rules` and `firestore.indexes.json`.
+Firestore security rules and indexes live in [`firestore.rules`](firestore.rules) and [`firestore.indexes.json`](firestore.indexes.json).
