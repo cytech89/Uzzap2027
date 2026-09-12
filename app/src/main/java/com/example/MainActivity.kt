@@ -191,11 +191,8 @@ fun UzzapApp(
             onSignIn = { usernameOrPhone, pin ->
                 viewModel.signIn(usernameOrPhone, pin)
             },
-            onSignUp = { username, displayName, phone, pin, emoji, status ->
-                viewModel.signUp(username, displayName, phone, pin, emoji, status)
-            },
-            onQuickSignIn = {
-                viewModel.login("juandelacruz")
+            onSignUp = { username, displayName, phone, password, emoji, status ->
+                viewModel.signUp(username, displayName, phone, password, emoji, status)
             }
         )
         return

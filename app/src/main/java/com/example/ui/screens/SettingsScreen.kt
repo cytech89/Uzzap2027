@@ -105,9 +105,6 @@ fun SettingsScreen(
     var showPrivacyPolicyDialog by remember { mutableStateOf(false) }
     var showCommunityGuidelinesDialog by remember { mutableStateOf(false) }
     var showClearCacheDialog by remember { mutableStateOf(false) }
-    var showChangePinDialog by remember { mutableStateOf(false) }
-    var pinInput by remember { mutableStateOf("") }
-    var pinSuccessMessage by remember { mutableStateOf<String?>(null) }
     var cacheClearedMessage by remember { mutableStateOf<String?>(null) }
     var smsAlertsEnabled by remember { mutableStateOf(true) }
     var presenceVisibility by remember { mutableStateOf(true) }
@@ -475,47 +472,6 @@ fun SettingsScreen(
                         testTag = "toggle_presence_visibility"
                     )
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
-
-                    // Change PIN / Security Code
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Lock,
-                                contentDescription = null,
-                                tint = UzzapOrange,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "Account PIN & Security",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = pinSuccessMessage ?: "4-digit PIN for quick login & profile protect",
-                                    fontSize = 11.sp,
-                                    color = if (pinSuccessMessage != null) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        TextButton(
-                            onClick = { showChangePinDialog = true },
-                            modifier = Modifier.testTag("change_pin_button")
-                        ) {
-                            Text("Change", color = UzzapOrange, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        }
-                    }
                 }
             }
         }
@@ -892,68 +848,6 @@ fun SettingsScreen(
         )
     }
 
-    if (showChangePinDialog) {
-        AlertDialog(
-            onDismissRequest = { showChangePinDialog = false },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = null,
-                    tint = UzzapOrange,
-                    modifier = Modifier.size(28.dp)
-                )
-            },
-            title = {
-                Text("Change Security PIN", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            },
-            text = {
-                Column {
-                    Text(
-                        text = "Enter a new 4-digit PIN for quick login on Uzzap:",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = pinInput,
-                        onValueChange = { if (it.length <= 4 && it.all { c -> c.isDigit() }) pinInput = it },
-                        label = { Text("4-Digit PIN") },
-                        placeholder = { Text("1234") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (pinInput.length == 4) {
-                            showChangePinDialog = false
-                            pinSuccessMessage = "PIN successfully updated!"
-                            pinInput = ""
-                        }
-                    },
-                    enabled = pinInput.length == 4,
-                    colors = ButtonDefaults.buttonColors(containerColor = UzzapOrange),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Save PIN")
-                }
-            },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = {
-                        showChangePinDialog = false
-                        pinInput = ""
-                    },
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
     // Delete Account Dialog (Store Compliance: Easy and transparent account deletion)
     if (showDeleteAccountDialog) {
         AlertDialog(
@@ -982,7 +876,7 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "This action will:\n• Permanently delete your user profile (@${profile?.username ?: "user"})\n• Purge your live presence & avatar from Firebase Firestore\n• Erase all chat histories, messages, and contacts locally and in cloud storage\n• This action cannot be reversed.",
+                        text = "This action will:\n• Delete your user profile (@${profile?.username ?: "user"}) from Firebase Firestore\n• Erase chat history, messages, contacts, and preferences stored on this device\n• Cloud messages sent to other users may remain in their accounts\n• This action cannot be reversed.",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 17.sp
@@ -1121,7 +1015,7 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "2. Data Storage & Encryption\nMessages and user presence are transmitted over encrypted TLS connections to Firebase Firestore and cached locally in an encrypted Room SQLite database.",
+                        text = "2. Data Storage & Transport\nMessages and user presence are transmitted over encrypted TLS connections to Firebase Firestore and cached in the app's private Room database on this device.",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
