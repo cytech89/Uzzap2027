@@ -18,7 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.ConversationEntity
 import com.example.ui.components.EmptyListState
+import com.example.ui.components.RefreshableScreen
 import com.example.ui.components.UzzapAvatar
 import com.example.ui.theme.UzzapOrange
 import java.text.SimpleDateFormat
@@ -50,9 +51,15 @@ fun ChatsScreen(
     conversations: List<ConversationEntity>,
     onConversationClick: (String) -> Unit,
     onStartNewChat: () -> Unit,
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    Box(modifier = modifier.fillMaxSize()) {
+    RefreshableScreen(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier.fillMaxSize()
+    ) {
         if (conversations.isEmpty()) {
             EmptyListState(
                 title = "No Active Chats",
@@ -87,14 +94,14 @@ fun ChatsScreen(
         FloatingActionButton(
             onClick = onStartNewChat,
             containerColor = UzzapOrange,
-            contentColor = Color.White,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 16.dp, bottom = 16.dp)
                 .testTag("new_chat_fab")
         ) {
             Icon(
-                imageVector = Icons.Default.Chat,
+                imageVector = Icons.AutoMirrored.Filled.Chat,
                 contentDescription = "New Chat"
             )
         }
@@ -201,7 +208,7 @@ fun ConversationRow(
                                 text = "${conversation.unreadCount}",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                     }

@@ -27,7 +27,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDone
@@ -79,13 +79,14 @@ import com.example.data.model.UserProfileEntity
 import com.example.data.remote.firestore.FirestoreSyncStatus
 import com.example.ui.components.PresenceDot
 import com.example.ui.components.UzzapAvatar
+import com.example.ui.components.syncStatusContainerColor
+import com.example.ui.components.syncStatusContentColor
 import com.example.ui.theme.PresenceAway
 import com.example.ui.theme.PresenceBusy
 import com.example.ui.theme.PresenceOffline
 import com.example.ui.theme.PresenceOnline
 import com.example.ui.theme.UzzapCyan
 import com.example.ui.theme.UzzapOrange
-import com.example.ui.theme.UzzapOrangeContainer
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -197,7 +198,7 @@ fun ProfileScreen(
                                 clipboard.setPrimaryClip(clip)
                                 Toast.makeText(context, "Uzzap ID copied to clipboard!", Toast.LENGTH_SHORT).show()
                             },
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(48.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ContentCopy,
@@ -251,12 +252,12 @@ fun ProfileScreen(
                             onClick = { showEditProfileDialog = true },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = UzzapOrange,
-                                contentColor = Color.White
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             ),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .weight(1f)
-                                .height(42.dp)
+                                .height(48.dp)
                                 .testTag("edit_profile_button")
                         ) {
                             Icon(
@@ -277,7 +278,7 @@ fun ProfileScreen(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .weight(1f)
-                                .height(42.dp)
+                                .height(48.dp)
                                 .testTag("profile_open_settings_button")
                         ) {
                             Icon(
@@ -384,7 +385,7 @@ fun ProfileScreen(
                 StatCard(
                     title = "Chats",
                     value = "$totalChats",
-                    icon = Icons.Default.Chat,
+                    icon = Icons.AutoMirrored.Filled.Chat,
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
@@ -430,12 +431,7 @@ fun ProfileScreen(
 
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = when (firestoreSyncStatus) {
-                                FirestoreSyncStatus.CONNECTED -> Color(0xFFE8F5E9)
-                                FirestoreSyncStatus.SYNCING -> UzzapOrangeContainer
-                                FirestoreSyncStatus.OFFLINE_CACHE -> Color(0xFFE3F2FD)
-                                else -> MaterialTheme.colorScheme.surfaceVariant
-                            }
+                            color = syncStatusContainerColor(firestoreSyncStatus)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -446,12 +442,7 @@ fun ProfileScreen(
                                         .size(6.dp)
                                         .clip(CircleShape)
                                         .background(
-                                            when (firestoreSyncStatus) {
-                                                FirestoreSyncStatus.CONNECTED -> Color(0xFF2E7D32)
-                                                FirestoreSyncStatus.SYNCING -> UzzapOrange
-                                                FirestoreSyncStatus.OFFLINE_CACHE -> Color(0xFF1976D2)
-                                                else -> Color.Gray
-                                            }
+                                            syncStatusContentColor(firestoreSyncStatus)
                                         )
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -459,12 +450,7 @@ fun ProfileScreen(
                                     text = firestoreSyncStatus.label,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = when (firestoreSyncStatus) {
-                                        FirestoreSyncStatus.CONNECTED -> Color(0xFF2E7D32)
-                                        FirestoreSyncStatus.SYNCING -> UzzapOrange
-                                        FirestoreSyncStatus.OFFLINE_CACHE -> Color(0xFF1976D2)
-                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                    }
+                                    color = syncStatusContentColor(firestoreSyncStatus)
                                 )
                             }
                         }

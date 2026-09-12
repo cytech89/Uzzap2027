@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,7 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -35,14 +35,17 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -71,8 +74,39 @@ import com.example.ui.theme.PresenceOnline
 import com.example.ui.theme.UzzapCyan
 import com.example.ui.theme.UzzapNavy
 import com.example.ui.theme.UzzapOrange
-import com.example.ui.theme.UzzapOrangeContainer
 import kotlin.math.roundToInt
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RefreshableScreen(
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit
+) {
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier,
+        content = content
+    )
+}
+
+@Composable
+fun syncStatusContainerColor(status: FirestoreSyncStatus): Color = when (status) {
+    FirestoreSyncStatus.CONNECTED -> MaterialTheme.colorScheme.secondaryContainer
+    FirestoreSyncStatus.SYNCING -> MaterialTheme.colorScheme.primaryContainer
+    FirestoreSyncStatus.OFFLINE_CACHE -> MaterialTheme.colorScheme.tertiaryContainer
+    else -> MaterialTheme.colorScheme.surfaceVariant
+}
+
+@Composable
+fun syncStatusContentColor(status: FirestoreSyncStatus): Color = when (status) {
+    FirestoreSyncStatus.CONNECTED -> MaterialTheme.colorScheme.onSecondaryContainer
+    FirestoreSyncStatus.SYNCING -> MaterialTheme.colorScheme.onPrimaryContainer
+    FirestoreSyncStatus.OFFLINE_CACHE -> MaterialTheme.colorScheme.onTertiaryContainer
+    else -> MaterialTheme.colorScheme.onSurfaceVariant
+}
 
 @Composable
 fun PresenceDot(
@@ -144,9 +178,7 @@ fun UzzapTopHeader(
     Surface(
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 2.dp,
-        modifier = modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
+        modifier = modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
@@ -168,7 +200,7 @@ fun UzzapTopHeader(
                 ) {
                     Text(
                         text = "U",
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Black
                     )
@@ -211,12 +243,7 @@ fun UzzapTopHeader(
                 // Cloud Sync Pill
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = when (syncStatus) {
-                        FirestoreSyncStatus.CONNECTED -> Color(0xFFE8F5E9)
-                        FirestoreSyncStatus.SYNCING -> UzzapOrangeContainer
-                        FirestoreSyncStatus.OFFLINE_CACHE -> Color(0xFFE3F2FD)
-                        else -> MaterialTheme.colorScheme.surfaceVariant
-                    },
+                    color = syncStatusContainerColor(syncStatus),
                     modifier = Modifier.padding(end = 6.dp)
                 ) {
                     Row(
@@ -228,12 +255,7 @@ fun UzzapTopHeader(
                                 .size(6.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    when (syncStatus) {
-                                        FirestoreSyncStatus.CONNECTED -> Color(0xFF2E7D32)
-                                        FirestoreSyncStatus.SYNCING -> UzzapOrange
-                                        FirestoreSyncStatus.OFFLINE_CACHE -> Color(0xFF1976D2)
-                                        else -> Color.Gray
-                                    }
+                                    syncStatusContentColor(syncStatus)
                                 )
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -241,12 +263,7 @@ fun UzzapTopHeader(
                             text = "Cloud",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = when (syncStatus) {
-                                FirestoreSyncStatus.CONNECTED -> Color(0xFF2E7D32)
-                                FirestoreSyncStatus.SYNCING -> UzzapOrange
-                                FirestoreSyncStatus.OFFLINE_CACHE -> Color(0xFF1976D2)
-                                else -> MaterialTheme.colorScheme.onSurfaceVariant
-                            }
+                            color = syncStatusContentColor(syncStatus)
                         )
                     }
                 }
@@ -257,7 +274,9 @@ fun UzzapTopHeader(
                         onClick = onPresenceClick,
                         shape = RoundedCornerShape(20.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant,
-                        modifier = Modifier.testTag("presence_pill")
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .testTag("presence_pill")
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),

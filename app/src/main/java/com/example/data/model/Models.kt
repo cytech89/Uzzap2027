@@ -35,7 +35,8 @@ enum class MessageDeliveryStatus {
     SENDING,
     SENT,
     DELIVERED,
-    READ
+    READ,
+    FAILED
 }
 
 enum class RoomRole(val title: String) {

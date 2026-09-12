@@ -6,22 +6,34 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tag
-import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
@@ -36,7 +48,13 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
@@ -74,11 +92,27 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
-                UzzapApp()
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
+                        .safeDrawingPadding()
+                ) {
+                    UzzapApp()
+                }
             }
         }
     }
 }
+
+private enum class AppScreen {
+    TABS,
+    CONVERSATION,
+    ROOM
+}
+
+private const val SCREEN_TRANSITION_MILLIS = 280
+private const val CHROME_TRANSITION_MILLIS = 220
 
 @Composable
 fun UzzapApp(
@@ -102,12 +136,14 @@ fun UzzapApp(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val buddyFilter by viewModel.buddyCategoryFilter.collectAsStateWithLifecycle()
     val roomFilter by viewModel.roomCategoryFilter.collectAsStateWithLifecycle()
+    val selectedRegion by viewModel.selectedRegion.collectAsStateWithLifecycle()
 
     val isAddContactDialogOpen by viewModel.isAddContactDialogOpen.collectAsStateWithLifecycle()
     val isCreateRoomDialogOpen by viewModel.isCreateRoomDialogOpen.collectAsStateWithLifecycle()
     val isPresenceMenuOpen by viewModel.isPresenceMenuOpen.collectAsStateWithLifecycle()
     val buzzTrigger by viewModel.buzzShakeTrigger.collectAsStateWithLifecycle()
     val firestoreSyncStatus by viewModel.firestoreSyncStatus.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
 
     val notificationsEnabled by viewModel.notificationsEnabled.collectAsStateWithLifecycle()
     val soundEffectsEnabled by viewModel.soundEffectsEnabled.collectAsStateWithLifecycle()
@@ -117,6 +153,21 @@ fun UzzapApp(
 
     val activeConvo = conversations.firstOrNull { it.id == activeConversationId }
     val activeRoom = chatrooms.firstOrNull { it.id == activeRoomId }
+    var retainedConversation by remember { mutableStateOf(activeConvo) }
+    var retainedConversationMessages by remember { mutableStateOf(activeMessages) }
+    var retainedRoom by remember { mutableStateOf(activeRoom) }
+    var retainedRoomMessages by remember { mutableStateOf(activeRoomMessages) }
+
+    SideEffect {
+        if (activeConversationId != null) {
+            retainedConversation = activeConvo
+            retainedConversationMessages = activeMessages
+        }
+        if (activeRoomId != null) {
+            retainedRoom = activeRoom
+            retainedRoomMessages = activeRoomMessages
+        }
+    }
 
     // Intercept back navigation when in detail screens
     BackHandler(enabled = activeConversationId != null || activeRoomId != null) {
@@ -150,10 +201,26 @@ fun UzzapApp(
         return
     }
 
+    val appScreen = when {
+        activeConversationId != null -> AppScreen.CONVERSATION
+        activeRoomId != null -> AppScreen.ROOM
+        else -> AppScreen.TABS
+    }
+    val showAppChrome = appScreen == AppScreen.TABS
+    val tabStateHolder = rememberSaveableStateHolder()
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            if (activeConversationId == null && activeRoomId == null) {
+            AnimatedVisibility(
+                visible = showAppChrome,
+                enter = fadeIn(tween(CHROME_TRANSITION_MILLIS)) +
+                    slideInVertically(tween(CHROME_TRANSITION_MILLIS)) { -it } +
+                    expandVertically(tween(CHROME_TRANSITION_MILLIS), expandFrom = Alignment.Top),
+                exit = fadeOut(tween(CHROME_TRANSITION_MILLIS)) +
+                    slideOutVertically(tween(CHROME_TRANSITION_MILLIS)) { -it } +
+                    shrinkVertically(tween(CHROME_TRANSITION_MILLIS), shrinkTowards = Alignment.Top)
+            ) {
                 UzzapTopHeader(
                     profile = profile,
                     onPresenceClick = { viewModel.setPresenceMenuOpen(true) },
@@ -162,7 +229,15 @@ fun UzzapApp(
             }
         },
         bottomBar = {
-            if (activeConversationId == null && activeRoomId == null) {
+            AnimatedVisibility(
+                visible = showAppChrome,
+                enter = fadeIn(tween(CHROME_TRANSITION_MILLIS)) +
+                    slideInVertically(tween(CHROME_TRANSITION_MILLIS)) { it } +
+                    expandVertically(tween(CHROME_TRANSITION_MILLIS), expandFrom = Alignment.Bottom),
+                exit = fadeOut(tween(CHROME_TRANSITION_MILLIS)) +
+                    slideOutVertically(tween(CHROME_TRANSITION_MILLIS)) { it } +
+                    shrinkVertically(tween(CHROME_TRANSITION_MILLIS), shrinkTowards = Alignment.Bottom)
+            ) {
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface,
                     tonalElevation = 6.dp
@@ -213,7 +288,11 @@ fun UzzapApp(
                                 }
                             ) {
                                 Icon(
-                                    imageVector = if (currentTab == MainTab.CHATS) Icons.Filled.Chat else Icons.Outlined.Chat,
+                                    imageVector = if (currentTab == MainTab.CHATS) {
+                                        Icons.AutoMirrored.Filled.Chat
+                                    } else {
+                                        Icons.AutoMirrored.Outlined.Chat
+                                    },
                                     contentDescription = "Chats"
                                 )
                             }
@@ -299,54 +378,104 @@ fun UzzapApp(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
                 .clipToBounds()
         ) {
-            when {
-                activeConversationId != null -> {
-                    ChatDetailScreen(
-                        conversation = activeConvo,
-                        messages = activeMessages,
-                        onBack = { viewModel.closeConversation() },
-                        onSendMessage = { text, replyTo -> viewModel.sendMessage(text, replyTo) },
-                        onSendBuzz = { viewModel.sendBuzz() },
-                        buzzTrigger = buzzTrigger,
-                        onBlockUser = { username -> viewModel.blockUser(username) },
-                        onReportUser = { username, reason, details ->
-                            viewModel.submitReport(
-                                target = "user:$username",
-                                reason = reason,
-                                details = details
-                            )
-                        }
-                    )
-                }
-                activeRoomId != null -> {
-                    RoomDetailScreen(
-                        room = activeRoom,
-                        messages = activeRoomMessages,
-                        onBack = { viewModel.closeRoom() },
-                        onSendMessage = { text -> viewModel.sendRoomMessage(text) },
-                        onToggleJoin = { join ->
-                            activeRoom?.let { r ->
-                                viewModel.joinOrLeaveRoom(r.id, join)
+            AnimatedContent(
+                targetState = appScreen,
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.TopStart,
+                transitionSpec = {
+                    val openingDetail = initialState == AppScreen.TABS && targetState != AppScreen.TABS
+                    val closingDetail = initialState != AppScreen.TABS && targetState == AppScreen.TABS
+
+                    when {
+                        openingDetail -> (
+                            slideInHorizontally(
+                                animationSpec = tween(SCREEN_TRANSITION_MILLIS, easing = FastOutSlowInEasing),
+                                initialOffsetX = { it }
+                            ) + fadeIn(tween(SCREEN_TRANSITION_MILLIS))
+                        ).togetherWith(
+                            slideOutHorizontally(
+                                animationSpec = tween(SCREEN_TRANSITION_MILLIS, easing = FastOutSlowInEasing),
+                                targetOffsetX = { -it / 4 }
+                            ) + fadeOut(tween(SCREEN_TRANSITION_MILLIS))
+                        )
+
+                        closingDetail -> (
+                            slideInHorizontally(
+                                animationSpec = tween(SCREEN_TRANSITION_MILLIS, easing = FastOutSlowInEasing),
+                                initialOffsetX = { -it / 4 }
+                            ) + fadeIn(tween(SCREEN_TRANSITION_MILLIS))
+                        ).togetherWith(
+                            slideOutHorizontally(
+                                animationSpec = tween(SCREEN_TRANSITION_MILLIS, easing = FastOutSlowInEasing),
+                                targetOffsetX = { it }
+                            ) + fadeOut(tween(SCREEN_TRANSITION_MILLIS))
+                        )
+
+                        else -> fadeIn(tween(SCREEN_TRANSITION_MILLIS)) togetherWith
+                            fadeOut(tween(SCREEN_TRANSITION_MILLIS))
+                    }.using(SizeTransform(clip = false))
+                },
+                label = "ScreenTransition"
+            ) { screen ->
+                when (screen) {
+                    AppScreen.CONVERSATION -> {
+                        ChatDetailScreen(
+                            conversation = activeConvo ?: retainedConversation,
+                            messages = if (activeConversationId != null) {
+                                activeMessages
+                            } else {
+                                retainedConversationMessages
+                            },
+                            onBack = { viewModel.closeConversation() },
+                            onSendMessage = { text, replyTo -> viewModel.sendMessage(text, replyTo) },
+                            onSendBuzz = { viewModel.sendBuzz() },
+                            buzzTrigger = buzzTrigger,
+                            onBlockUser = { username -> viewModel.blockUser(username) },
+                            onReportUser = { username, reason, details ->
+                                viewModel.submitReport(
+                                    target = "user:$username",
+                                    reason = reason,
+                                    details = details
+                                )
                             }
-                        },
-                        onReportRoom = { roomId, reason, details ->
-                            viewModel.submitReport(
-                                target = "room:$roomId",
-                                reason = reason,
-                                details = details
-                            )
-                        }
-                    )
-                }
-                else -> {
-                    AnimatedContent(
-                        targetState = currentTab,
-                        transitionSpec = { fadeIn() togetherWith fadeOut() },
-                        label = "TabTransition"
-                    ) { tab ->
-                        when (tab) {
+                        )
+                    }
+                    AppScreen.ROOM -> {
+                        RoomDetailScreen(
+                            room = activeRoom ?: retainedRoom,
+                            messages = if (activeRoomId != null) activeRoomMessages else retainedRoomMessages,
+                            onBack = { viewModel.closeRoom() },
+                            onSendMessage = { text -> viewModel.sendRoomMessage(text) },
+                            onToggleJoin = { join ->
+                                activeRoom?.let { r ->
+                                    viewModel.joinOrLeaveRoom(r.id, join)
+                                }
+                            },
+                            onReportRoom = { roomId, reason, details ->
+                                viewModel.submitReport(
+                                    target = "room:$roomId",
+                                    reason = reason,
+                                    details = details
+                                )
+                            }
+                        )
+                    }
+                    AppScreen.TABS -> {
+                        AnimatedContent(
+                            targetState = currentTab,
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.TopStart,
+                            transitionSpec = {
+                                (fadeIn(tween(180, delayMillis = 40)) togetherWith
+                                    fadeOut(tween(140))).using(SizeTransform(clip = false))
+                            },
+                            label = "TabTransition"
+                        ) { tab ->
+                            tabStateHolder.SaveableStateProvider(tab) {
+                                when (tab) {
                             MainTab.BUDDIES -> {
                                 FriendsScreen(
                                     contacts = contacts,
@@ -361,7 +490,9 @@ fun UzzapApp(
                                     onFavoriteToggle = { viewModel.toggleFavorite(it) },
                                     onAcceptRequest = { viewModel.acceptFriendRequest(it) },
                                     onDeclineRequest = { viewModel.declineFriendRequest(it) },
-                                    onAddContactClick = { viewModel.setAddContactDialogOpen(true) }
+                                    onAddContactClick = { viewModel.setAddContactDialogOpen(true) },
+                                    isRefreshing = isRefreshing,
+                                    onRefresh = { viewModel.refreshData() }
                                 )
                             }
                             MainTab.CHATS -> {
@@ -372,7 +503,9 @@ fun UzzapApp(
                                     },
                                     onStartNewChat = {
                                         viewModel.setTab(MainTab.BUDDIES)
-                                    }
+                                    },
+                                    isRefreshing = isRefreshing,
+                                    onRefresh = { viewModel.refreshData() }
                                 )
                             }
                             MainTab.ROOMS -> {
@@ -388,7 +521,11 @@ fun UzzapApp(
                                     },
                                     onCreateRoomClick = {
                                         viewModel.setCreateRoomDialogOpen(true)
-                                    }
+                                    },
+                                    isRefreshing = isRefreshing,
+                                    onRefresh = { viewModel.refreshData() },
+                                    selectedRegion = selectedRegion,
+                                    onSelectRegion = { region -> viewModel.selectRegion(region) }
                                 )
                             }
                             MainTab.PROFILE -> {
@@ -428,6 +565,8 @@ fun UzzapApp(
                                     onLogoutClick = { viewModel.logout(context) },
                                     onDeleteAccount = { viewModel.deleteAccount(context) }
                                 )
+                            }
+                            }
                             }
                         }
                     }

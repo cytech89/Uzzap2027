@@ -56,6 +56,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,6 +71,7 @@ import com.example.data.model.ChatroomEntity
 import com.example.data.model.PhilippineRegionInfo
 import com.example.data.model.PhilippineRegions
 import com.example.ui.components.EmptyListState
+import com.example.ui.components.RefreshableScreen
 import com.example.ui.theme.UzzapOrange
 
 @Composable
@@ -80,12 +82,14 @@ fun RoomsScreen(
     onRoomClick: (ChatroomEntity) -> Unit,
     onToggleJoin: (String, Boolean) -> Unit,
     onCreateRoomClick: () -> Unit,
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier,
     selectedRegion: String? = null,
     onSelectRegion: (String?) -> Unit = {}
 ) {
     // If selectedRegion is passed from outside, use it; otherwise fallback to internal navigation
-    var localSelectedRegion by remember { mutableStateOf<String?>(null) }
+    var localSelectedRegion by rememberSaveable { mutableStateOf<String?>(null) }
     val effectiveSelectedRegion = selectedRegion ?: localSelectedRegion
 
     fun updateSelectedRegion(region: String?) {
@@ -93,16 +97,20 @@ fun RoomsScreen(
         onSelectRegion(region)
     }
 
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedIslandGroup by remember { mutableStateOf("All") }
-    var provinceFilterJoinedOnly by remember { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedIslandGroup by rememberSaveable { mutableStateOf("All") }
+    var provinceFilterJoinedOnly by rememberSaveable { mutableStateOf(false) }
 
     // Intercept back navigation when inside a region's provinces
     BackHandler(enabled = effectiveSelectedRegion != null) {
         updateSelectedRegion(null)
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    RefreshableScreen(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier.fillMaxSize()
+    ) {
         if (effectiveSelectedRegion == null) {
             // ==================== LEVEL 1: REGIONS VIEW ====================
             LazyColumn(
@@ -273,7 +281,7 @@ fun RoomsScreen(
                                     Icon(
                                         imageVector = Icons.Default.Map,
                                         contentDescription = null,
-                                        tint = Color.White,
+                                        tint = MaterialTheme.colorScheme.onPrimary,
                                         modifier = Modifier.size(26.dp)
                                     )
                                 }
@@ -700,7 +708,7 @@ fun RoomsScreen(
         FloatingActionButton(
             onClick = onCreateRoomClick,
             containerColor = UzzapOrange,
-            contentColor = Color.White,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 16.dp, bottom = 16.dp)
@@ -1033,7 +1041,7 @@ fun ProvinceChatroomRow(
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Join",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(15.dp)
                         )
                         Spacer(modifier = Modifier.width(3.dp))

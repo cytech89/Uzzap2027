@@ -1,8 +1,17 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -33,6 +43,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.EmojiEmotions
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.ReportProblem
@@ -64,6 +75,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -74,13 +87,7 @@ import com.example.data.model.MessageDeliveryStatus
 import com.example.data.model.MessageEntity
 import com.example.data.model.MessageType
 import com.example.ui.components.UzzapAvatar
-import com.example.ui.theme.BubbleBuzz
-import com.example.ui.theme.BubbleOther
-import com.example.ui.theme.BubbleSelf
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.UzzapOrange
-import com.example.ui.theme.UzzapOrangeContainer
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -107,6 +114,8 @@ fun ChatDetailScreen(
     var reportReason by remember { mutableStateOf("Harassment / Bullying") }
     var reportDetails by remember { mutableStateOf("") }
     var reportSubmitted by remember { mutableStateOf(false) }
+    var hasPositionedInitialMessages by remember { mutableStateOf(false) }
+    var previousMessageCount by remember { mutableStateOf(0) }
 
     val listState = rememberLazyListState()
 
@@ -125,7 +134,19 @@ fun ChatDetailScreen(
     // Scroll to bottom on new messages
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
+            if (!hasPositionedInitialMessages) {
+                listState.scrollToItem(messages.lastIndex)
+                hasPositionedInitialMessages = true
+            } else {
+                val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                if (lastVisibleItem >= previousMessageCount - 2) {
+                    listState.animateScrollToItem(messages.lastIndex)
+                }
+            }
+            previousMessageCount = messages.size
+        } else {
+            hasPositionedInitialMessages = false
+            previousMessageCount = 0
         }
     }
 
@@ -273,7 +294,13 @@ fun ChatDetailScreen(
             }
 
             // Emoticons drawer bar
-            AnimatedVisibility(visible = showEmoticons) {
+            AnimatedVisibility(
+                visible = showEmoticons,
+                enter = fadeIn(tween(180)) +
+                    expandVertically(tween(220, easing = FastOutSlowInEasing)),
+                exit = fadeOut(tween(140)) +
+                    shrinkVertically(tween(180, easing = FastOutSlowInEasing))
+            ) {
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.fillMaxWidth()
@@ -304,42 +331,54 @@ fun ChatDetailScreen(
             }
 
             // Reply Preview Bar
-            if (replyToMessage != null) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Replying to ${replyToMessage?.senderDisplayName}:",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = UzzapOrange
-                            )
-                            Text(
-                                text = replyToMessage?.body ?: "",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1
-                            )
+            AnimatedContent(
+                targetState = replyToMessage,
+                transitionSpec = {
+                    (fadeIn(tween(160)) togetherWith fadeOut(tween(120))).using(
+                        SizeTransform(clip = true) { _, _ ->
+                            tween(200, easing = FastOutSlowInEasing)
                         }
-                        IconButton(
-                            onClick = { replyToMessage = null },
-                            modifier = Modifier.size(24.dp)
+                    )
+                },
+                label = "ReplyPreviewTransition"
+            ) { reply ->
+                if (reply != null) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(
-                                text = "✕",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Replying to ${reply.senderDisplayName}:",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = UzzapOrange
+                                )
+                                Text(
+                                    text = reply.body,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                            }
+                            IconButton(
+                                onClick = { replyToMessage = null },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Text(
+                                    text = "✕",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
@@ -349,7 +388,10 @@ fun ChatDetailScreen(
             Surface(
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 4.dp,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateContentSize(tween(180, easing = FastOutSlowInEasing))
+                    .imePadding()
             ) {
                 Row(
                     modifier = Modifier
@@ -360,7 +402,7 @@ fun ChatDetailScreen(
                     // Emoticon Toggle
                     IconButton(
                         onClick = { showEmoticons = !showEmoticons },
-                        modifier = Modifier.size(40.dp)
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.EmojiEmotions,
@@ -373,7 +415,7 @@ fun ChatDetailScreen(
                     IconButton(
                         onClick = onSendBuzz,
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(48.dp)
                             .testTag("composer_buzz_button")
                     ) {
                         Icon(
@@ -422,7 +464,7 @@ fun ChatDetailScreen(
                         },
                         enabled = inputText.isNotBlank(),
                         modifier = Modifier
-                            .size(42.dp)
+                            .size(48.dp)
                             .clip(CircleShape)
                             .background(if (inputText.isNotBlank()) UzzapOrange else Color.LightGray)
                             .testTag("send_button")
@@ -430,7 +472,7 @@ fun ChatDetailScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Send",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -617,7 +659,7 @@ fun MessageBubble(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Card(
-                colors = CardDefaults.cardColors(containerColor = BubbleBuzz),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
@@ -636,13 +678,13 @@ fun MessageBubble(
                         text = if (message.isFromMe) "You sent a BUZZ!" else "${message.senderDisplayName} BUZZED YOU!",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Black,
-                        color = Color(0xFFB43B00)
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = formattedTime,
                         fontSize = 10.sp,
-                        color = Color(0xFFB43B00).copy(alpha = 0.7f)
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
                     )
                 }
             }
@@ -652,9 +694,21 @@ fun MessageBubble(
 
     // Normal Text Message Bubble
     val alignment = if (message.isFromMe) Alignment.End else Alignment.Start
-    val bubbleColor = if (message.isFromMe) BubbleSelf else BubbleOther
-    val textColor = if (message.isFromMe) Color.White else TextPrimary
-    val timestampColor = if (message.isFromMe) Color.White.copy(alpha = 0.85f) else TextSecondary
+    val bubbleColor = if (message.isFromMe) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
+    val textColor = if (message.isFromMe) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val timestampColor = if (message.isFromMe) {
+        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.78f)
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     Column(
         modifier = modifier
@@ -665,7 +719,10 @@ fun MessageBubble(
         Card(
             onClick = onReplyClick,
             colors = CardDefaults.cardColors(containerColor = bubbleColor),
-            border = if (message.isFromMe) null else androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+            border = if (message.isFromMe) null else androidx.compose.foundation.BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant
+            ),
             shape = RoundedCornerShape(
                 topStart = 16.dp,
                 topEnd = 16.dp,
@@ -679,7 +736,11 @@ fun MessageBubble(
                 // Reply quote if any
                 if (message.replyToBody != null) {
                     Surface(
-                        color = if (message.isFromMe) Color.Black.copy(alpha = 0.2f) else Color(0xFFE2E8F0),
+                        color = if (message.isFromMe) {
+                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.12f)
+                        } else {
+                            MaterialTheme.colorScheme.surface
+                        },
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -688,7 +749,11 @@ fun MessageBubble(
                         Text(
                             text = message.replyToBody,
                             fontSize = 11.sp,
-                            color = if (message.isFromMe) Color.White.copy(alpha = 0.95f) else TextPrimary,
+                            color = if (message.isFromMe) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
                             maxLines = 2,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
@@ -720,13 +785,20 @@ fun MessageBubble(
                         Spacer(modifier = Modifier.width(4.dp))
                         when (message.status) {
                             MessageDeliveryStatus.SENDING -> {
-                                Text("•", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                Text(
+                                    "…",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f),
+                                    modifier = Modifier.semantics {
+                                        contentDescription = "Sending"
+                                    }
+                                )
                             }
                             MessageDeliveryStatus.SENT -> {
                                 Icon(
                                     imageVector = Icons.Default.Check,
                                     contentDescription = "Sent",
-                                    tint = Color.White.copy(alpha = 0.75f),
+                                    tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f),
                                     modifier = Modifier.size(12.dp)
                                 )
                             }
@@ -734,7 +806,7 @@ fun MessageBubble(
                                 Icon(
                                     imageVector = Icons.Default.DoneAll,
                                     contentDescription = "Delivered",
-                                    tint = Color.White.copy(alpha = 0.85f),
+                                    tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
                                     modifier = Modifier.size(12.dp)
                                 )
                             }
@@ -744,6 +816,14 @@ fun MessageBubble(
                                     contentDescription = "Read",
                                     tint = Color(0xFF69F0AE),
                                     modifier = Modifier.size(12.dp)
+                                )
+                            }
+                            MessageDeliveryStatus.FAILED -> {
+                                Icon(
+                                    imageVector = Icons.Default.ErrorOutline,
+                                    contentDescription = "Failed to send",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(14.dp)
                                 )
                             }
                         }
