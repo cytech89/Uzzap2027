@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.ContactCategory
 import com.example.data.model.UserPresence
 import com.example.data.model.UserProfileEntity
+import com.example.data.remote.firestore.FirestoreSyncStatus
 import com.example.ui.theme.PresenceAway
 import com.example.ui.theme.PresenceBusy
 import com.example.ui.theme.PresenceOffline
@@ -136,6 +137,7 @@ fun UzzapAvatar(
 fun UzzapTopHeader(
     profile: UserProfileEntity?,
     onPresenceClick: () -> Unit,
+    syncStatus: FirestoreSyncStatus = FirestoreSyncStatus.CONNECTED,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -201,33 +203,79 @@ fun UzzapTopHeader(
                 }
             }
 
-            // User Presence Pill (Clickable)
-            if (profile != null) {
+            // Cloud Status & User Presence
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Cloud Sync Pill
                 Surface(
-                    onClick = onPresenceClick,
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.testTag("presence_pill")
+                    shape = RoundedCornerShape(16.dp),
+                    color = when (syncStatus) {
+                        FirestoreSyncStatus.CONNECTED -> Color(0xFFE8F5E9)
+                        FirestoreSyncStatus.SYNCING -> UzzapOrangeContainer
+                        FirestoreSyncStatus.OFFLINE_CACHE -> Color(0xFFE3F2FD)
+                        else -> MaterialTheme.colorScheme.surfaceVariant
+                    },
+                    modifier = Modifier.padding(end = 6.dp)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        PresenceDot(presence = profile.status, size = 10)
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    when (syncStatus) {
+                                        FirestoreSyncStatus.CONNECTED -> Color(0xFF2E7D32)
+                                        FirestoreSyncStatus.SYNCING -> UzzapOrange
+                                        FirestoreSyncStatus.OFFLINE_CACHE -> Color(0xFF1976D2)
+                                        else -> Color.Gray
+                                    }
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = profile.status.label,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            text = "Cloud",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = when (syncStatus) {
+                                FirestoreSyncStatus.CONNECTED -> Color(0xFF2E7D32)
+                                FirestoreSyncStatus.SYNCING -> UzzapOrange
+                                FirestoreSyncStatus.OFFLINE_CACHE -> Color(0xFF1976D2)
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
                         )
-                        Spacer(modifier = Modifier.width(2.dp))
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Edit presence",
-                            modifier = Modifier.size(12.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    }
+                }
+
+                // User Presence Pill (Clickable)
+                if (profile != null) {
+                    Surface(
+                        onClick = onPresenceClick,
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.testTag("presence_pill")
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            PresenceDot(presence = profile.status, size = 10)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = profile.status.label,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit presence",
+                                modifier = Modifier.size(12.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }

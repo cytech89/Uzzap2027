@@ -1,8 +1,10 @@
 package com.example.ui.viewmodel
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.auth.AuthenticationManager
 import com.example.data.local.UzzapDatabase
 import com.example.data.model.ChatroomEntity
 import com.example.data.model.ContactCategory
@@ -12,6 +14,7 @@ import com.example.data.model.MessageEntity
 import com.example.data.model.RoomMessageEntity
 import com.example.data.model.UserPresence
 import com.example.data.model.UserProfileEntity
+import com.example.data.remote.firestore.FirestoreSyncStatus
 import com.example.data.repository.UzzapRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +37,11 @@ enum class MainTab(val title: String) {
 class UzzapViewModel(application: Application) : AndroidViewModel(application) {
     private val database = UzzapDatabase.getDatabase(application, viewModelScope)
     val repository = UzzapRepository(database, viewModelScope)
+
+    // Session / Auth state
+    private val prefs = application.getSharedPreferences("uzzap_session", Context.MODE_PRIVATE)
+    private val _isLoggedIn = MutableStateFlow(prefs.getBoolean("is_logged_in", true))
+    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
     // Current navigation state
     private val _currentTab = MutableStateFlow(MainTab.BUDDIES)
@@ -65,6 +73,12 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
     private val _isPresenceMenuOpen = MutableStateFlow(false)
     val isPresenceMenuOpen: StateFlow<Boolean> = _isPresenceMenuOpen.asStateFlow()
 
+    private val _authLoading = MutableStateFlow(false)
+    val authLoading: StateFlow<Boolean> = _authLoading.asStateFlow()
+
+    private val _authError = MutableStateFlow<String?>(null)
+    val authError: StateFlow<String?> = _authError.asStateFlow()
+
     private val _buzzShakeTrigger = MutableStateFlow(0)
     val buzzShakeTrigger: StateFlow<Int> = _buzzShakeTrigger.asStateFlow()
 
@@ -83,6 +97,8 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
 
     val chatrooms: StateFlow<List<ChatroomEntity>> = repository.chatroomsFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val firestoreSyncStatus: StateFlow<FirestoreSyncStatus> = repository.firestoreSyncStatus
 
     // Active conversation messages
     val activeConversationMessages: StateFlow<List<MessageEntity>> = _activeConversationId
@@ -133,10 +149,12 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
 
     fun openRoom(roomId: String) {
         _activeRoomId.value = roomId
+        repository.enterRoom(roomId)
     }
 
     fun closeRoom() {
         _activeRoomId.value = null
+        repository.leaveActiveRoom()
     }
 
     fun setSearchQuery(query: String) {
@@ -237,5 +255,92 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
             repository.createChatroom(name, topic, category)
             _isCreateRoomDialogOpen.value = false
         }
+    }
+
+    /**
+     * Signs out the user, updates their presence to OFFLINE, clears active chats/rooms,
+     * and triggers the sign-in screen.
+     */
+    fun logout(context: Context? = null) {
+        viewModelScope.launch {
+            prefs.edit().putBoolean("is_logged_in", false).apply()
+            repository.updatePresence(UserPresence.OFFLINE, "Offline - Logged out")
+            try {
+                AuthenticationManager.getInstance().signOut(context ?: getApplication())
+            } catch (e: Exception) {
+                // Graceful fallback if no active Firebase session
+            }
+            _activeConversationId.value = null
+            _activeRoomId.value = null
+            _isLoggedIn.value = false
+        }
+    }
+
+    fun syncProfileWithCloud() {
+        viewModelScope.launch {
+            val p = profile.value
+            if (p != null) {
+                repository.updateProfile(p)
+            }
+        }
+    }
+
+    fun clearAuthError() {
+        _authError.value = null
+    }
+
+    fun signIn(usernameOrPhone: String, pin: String) {
+        viewModelScope.launch {
+            _authLoading.value = true
+            _authError.value = null
+            val result = repository.signIn(usernameOrPhone, pin)
+            if (result.isSuccess) {
+                prefs.edit().putBoolean("is_logged_in", true).apply()
+                _isLoggedIn.value = true
+                _currentTab.value = MainTab.BUDDIES
+                _authError.value = null
+            } else {
+                _authError.value = result.exceptionOrNull()?.localizedMessage ?: "Sign in failed"
+            }
+            _authLoading.value = false
+        }
+    }
+
+    fun signUp(
+        username: String,
+        displayName: String,
+        phoneNumber: String,
+        pin: String,
+        avatarEmoji: String,
+        statusMessage: String
+    ) {
+        viewModelScope.launch {
+            _authLoading.value = true
+            _authError.value = null
+            val result = repository.signUp(
+                username = username,
+                displayName = displayName,
+                phoneNumber = phoneNumber,
+                pin = pin,
+                avatarEmoji = avatarEmoji,
+                statusMessage = statusMessage
+            )
+            if (result.isSuccess) {
+                prefs.edit().putBoolean("is_logged_in", true).apply()
+                _isLoggedIn.value = true
+                _currentTab.value = MainTab.BUDDIES
+                _authError.value = null
+            } else {
+                _authError.value = result.exceptionOrNull()?.localizedMessage ?: "Sign up failed"
+            }
+            _authLoading.value = false
+        }
+    }
+
+    /**
+     * Signs the user back in, restoring their status to ONLINE and resetting to the Buddies tab.
+     */
+    fun login(username: String = "juandelacruz", displayName: String = "Juan Dela Cruz") {
+        signIn(username, "")
     }
 }

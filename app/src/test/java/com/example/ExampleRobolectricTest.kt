@@ -18,4 +18,33 @@ class ExampleRobolectricTest {
     val appName = context.getString(R.string.app_name)
     assertEquals("Uzzap", appName)
   }
+
+  @Test
+  fun `verify logout strings`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val logoutText = context.getString(R.string.action_logout)
+    assertEquals("Log Out", logoutText)
+  }
+
+  @Test
+  fun `verify firestore sync status labels`() {
+    val connected = com.example.data.remote.firestore.FirestoreSyncStatus.CONNECTED
+    assertEquals("Connected to Firestore", connected.label)
+  }
+
+  @Test
+  fun `verify user profile entity default values`() {
+    val profile = com.example.data.model.UserProfileEntity(
+      username = "test_user",
+      displayName = "Test User",
+      phoneNumber = "+63 917 111 2222",
+      status = com.example.data.model.UserPresence.ONLINE,
+      statusMessage = "Hello Uzzap!",
+      avatarEmoji = "😎"
+    )
+    assertEquals("test_user", profile.username)
+    assertEquals("Test User", profile.displayName)
+    assertEquals("😎", profile.avatarEmoji)
+    assertEquals(com.example.data.model.UserPresence.ONLINE, profile.status)
+  }
 }

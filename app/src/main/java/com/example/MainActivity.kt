@@ -38,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -53,6 +54,7 @@ import com.example.ui.components.UzzapTopHeader
 import com.example.ui.screens.ChatDetailScreen
 import com.example.ui.screens.ChatsScreen
 import com.example.ui.screens.FriendsScreen
+import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.ProfileScreen
 import com.example.ui.screens.RoomDetailScreen
 import com.example.ui.screens.RoomsScreen
@@ -79,6 +81,8 @@ fun UzzapApp(
     viewModel: UzzapViewModel = viewModel()
 ) {
     val currentTab by viewModel.currentTab.collectAsStateWithLifecycle()
+    val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val activeConversationId by viewModel.activeConversationId.collectAsStateWithLifecycle()
     val activeRoomId by viewModel.activeRoomId.collectAsStateWithLifecycle()
 
@@ -99,6 +103,7 @@ fun UzzapApp(
     val isCreateRoomDialogOpen by viewModel.isCreateRoomDialogOpen.collectAsStateWithLifecycle()
     val isPresenceMenuOpen by viewModel.isPresenceMenuOpen.collectAsStateWithLifecycle()
     val buzzTrigger by viewModel.buzzShakeTrigger.collectAsStateWithLifecycle()
+    val firestoreSyncStatus by viewModel.firestoreSyncStatus.collectAsStateWithLifecycle()
 
     val activeConvo = conversations.firstOrNull { it.id == activeConversationId }
     val activeRoom = chatrooms.firstOrNull { it.id == activeRoomId }
@@ -114,6 +119,26 @@ fun UzzapApp(
 
     val totalUnread = conversations.sumOf { it.unreadCount }
     val pendingRequestsCount = pendingRequests.size
+    val authLoading by viewModel.authLoading.collectAsStateWithLifecycle()
+    val authError by viewModel.authError.collectAsStateWithLifecycle()
+
+    if (!isLoggedIn) {
+        LoginScreen(
+            isLoading = authLoading,
+            errorMessage = authError,
+            onClearError = { viewModel.clearAuthError() },
+            onSignIn = { usernameOrPhone, pin ->
+                viewModel.signIn(usernameOrPhone, pin)
+            },
+            onSignUp = { username, displayName, phone, pin, emoji, status ->
+                viewModel.signUp(username, displayName, phone, pin, emoji, status)
+            },
+            onQuickSignIn = {
+                viewModel.login("juandelacruz")
+            }
+        )
+        return
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -121,7 +146,8 @@ fun UzzapApp(
             if (activeConversationId == null && activeRoomId == null) {
                 UzzapTopHeader(
                     profile = profile,
-                    onPresenceClick = { viewModel.setPresenceMenuOpen(true) }
+                    onPresenceClick = { viewModel.setPresenceMenuOpen(true) },
+                    syncStatus = firestoreSyncStatus
                 )
             }
         },
@@ -319,8 +345,11 @@ fun UzzapApp(
                                     totalBuddies = contacts.size,
                                     totalChats = conversations.size,
                                     totalRooms = chatrooms.count { it.isJoined },
+                                    firestoreSyncStatus = firestoreSyncStatus,
+                                    onSyncNowClick = { viewModel.syncProfileWithCloud() },
                                     onEditPresenceClick = { viewModel.setPresenceMenuOpen(true) },
-                                    onToggleVibration = { viewModel.updateVibrationSetting(it) }
+                                    onToggleVibration = { viewModel.updateVibrationSetting(it) },
+                                    onLogoutClick = { viewModel.logout(context) }
                                 )
                             }
                         }

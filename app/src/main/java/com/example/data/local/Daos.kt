@@ -61,6 +61,9 @@ interface ContactDao {
     @Query("UPDATE contacts SET presence = :presence, statusMessage = :statusMessage WHERE id = :id")
     suspend fun updatePresence(id: String, presence: UserPresence, statusMessage: String)
 
+    @Query("UPDATE contacts SET presence = :presence, statusMessage = :statusMessage WHERE username = :username")
+    suspend fun updatePresenceByUsername(username: String, presence: UserPresence, statusMessage: String)
+
     @Query("UPDATE contacts SET friendshipState = :state WHERE id = :id")
     suspend fun updateFriendshipState(id: String, state: FriendshipState)
 
@@ -99,6 +102,9 @@ interface ConversationDao {
 interface MessageDao {
     @Query("SELECT * FROM messages WHERE conversationId = :conversationId ORDER BY timestamp ASC")
     fun getMessagesForConversationFlow(conversationId: String): Flow<List<MessageEntity>>
+
+    @Query("SELECT id FROM messages WHERE id = :id LIMIT 1")
+    suspend fun getMessageById(id: String): String?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMessage(message: MessageEntity)
@@ -141,6 +147,9 @@ interface ChatroomDao {
 
     @Query("SELECT * FROM room_messages WHERE roomId = :roomId ORDER BY timestamp ASC")
     fun getRoomMessagesFlow(roomId: String): Flow<List<RoomMessageEntity>>
+
+    @Query("SELECT id FROM room_messages WHERE id = :id LIMIT 1")
+    suspend fun getRoomMessageById(id: String): String?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRoomMessage(message: RoomMessageEntity)
