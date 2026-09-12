@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Uzzap</string>
+    <string name="nav_friends">Buddies</string>
+    <string name="nav_chats">Chats</string>
+    <string name="nav_rooms">Chatrooms</string>
+    <string name="nav_profile">Profile</string>
+</resources>

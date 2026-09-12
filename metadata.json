@@ -1,0 +1,6 @@
+{
+  "name": "Uzzap",
+  "description": "Mobile messenger featuring buddy lists, real-time presence, 1-on-1 & group chats, vibrant chatrooms, and offline persistence.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
