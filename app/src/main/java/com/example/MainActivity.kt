@@ -57,6 +57,7 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -378,6 +379,7 @@ fun UzzapApp(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
+                .clipToBounds()
         ) {
             AnimatedContent(
                 targetState = appScreen,
