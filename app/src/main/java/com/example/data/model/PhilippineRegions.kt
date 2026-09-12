@@ -7,7 +7,193 @@ data class PhilippineProvince(
     val topic: String
 )
 
+data class PhilippineRegionInfo(
+    val id: String,
+    val name: String,
+    val shortName: String,
+    val islandGroup: String, // "Luzon", "Visayas", "Mindanao"
+    val description: String,
+    val emoji: String,
+    val highlights: String
+)
+
 object PhilippineRegions {
+    val ISLAND_GROUPS = listOf("All", "Luzon", "Visayas", "Mindanao")
+
+    val REGIONS = listOf(
+        // Luzon
+        PhilippineRegionInfo(
+            id = "ncr",
+            name = "NCR (Metro Manila)",
+            shortName = "Metro Manila",
+            islandGroup = "Luzon",
+            description = "National Capital Region and economic center of the Philippines",
+            emoji = "\uD83C\uDFD9\uFE0F",
+            highlights = "Manila, Quezon City, Makati, BGC, Pasig, Mandaluyong"
+        ),
+        PhilippineRegionInfo(
+            id = "car",
+            name = "CAR (Cordillera)",
+            shortName = "Cordillera",
+            islandGroup = "Luzon",
+            description = "Pine-covered mountain highlands, rich culture and cool climate",
+            emoji = "\u26F0\uFE0F",
+            highlights = "Baguio City, Benguet, Sagada, Banaue Rice Terraces"
+        ),
+        PhilippineRegionInfo(
+            id = "region_1",
+            name = "Region I (Ilocos)",
+            shortName = "Ilocos Region",
+            islandGroup = "Luzon",
+            description = "Historic cobblestone towns, Pacific coasts and iconic cuisine",
+            emoji = "\uD83C\uDF0A",
+            highlights = "Vigan, Bangui Windmills, La Union Elyu Surf, Hundred Islands"
+        ),
+        PhilippineRegionInfo(
+            id = "region_2",
+            name = "Region II (Cagayan Valley)",
+            shortName = "Cagayan Valley",
+            islandGroup = "Luzon",
+            description = "Vast agricultural river valleys, rolling hills and northern islands",
+            emoji = "\uD83C\uDF3E",
+            highlights = "Batanes, Cagayan River, Palaui Island, Isabela"
+        ),
+        PhilippineRegionInfo(
+            id = "region_3",
+            name = "Region III (Central Luzon)",
+            shortName = "Central Luzon",
+            islandGroup = "Luzon",
+            description = "Culinary capital, vibrant festivals and historical landmarks",
+            emoji = "\uD83C\uDFEE",
+            highlights = "Pampanga, Bulacan, Subic Zambales, Bataan, Aurora Baler"
+        ),
+        PhilippineRegionInfo(
+            id = "region_4a",
+            name = "Region IV-A (CALABARZON)",
+            shortName = "CALABARZON",
+            islandGroup = "Luzon",
+            description = "Volcanic lakes, historic heritage, hot springs and lush mountains",
+            emoji = "\uD83C\uDF0B",
+            highlights = "Cavite, Tagaytay, Laguna Hot Springs, Batangas, Antipolo"
+        ),
+        PhilippineRegionInfo(
+            id = "region_4b",
+            name = "Region IV-B (MIMAROPA)",
+            shortName = "MIMAROPA",
+            islandGroup = "Luzon",
+            description = "World-class tropical islands, coral reefs and pristine beaches",
+            emoji = "\uD83C\uDFD6\uFE0F",
+            highlights = "Palawan, El Nido, Coron, Puerto Galera, Romblon"
+        ),
+        PhilippineRegionInfo(
+            id = "region_5",
+            name = "Region V (Bicol)",
+            shortName = "Bicol Region",
+            islandGroup = "Luzon",
+            description = "Perfect-cone Mayon Volcano, spicy gastronomy and watersports",
+            emoji = "\uD83C\uDF36\uFE0F",
+            highlights = "Albay Mayon, Caramoan, Donsol Whalesharks, CWC"
+        ),
+
+        // Visayas
+        PhilippineRegionInfo(
+            id = "region_6",
+            name = "Region VI (Western Visayas)",
+            shortName = "Western Visayas",
+            islandGroup = "Visayas",
+            description = "Sugarlandia heritage, world-famous Boracay and colorful festivals",
+            emoji = "\uD83C\uDF89",
+            highlights = "Iloilo Dinagyang, Boracay, Bacolod MassKara, Guimaras"
+        ),
+        PhilippineRegionInfo(
+            id = "region_7",
+            name = "Region VII (Central Visayas)",
+            shortName = "Central Visayas",
+            islandGroup = "Visayas",
+            description = "Queen City of the South, Chocolate Hills, tarsiers and diving",
+            emoji = "\uD83C\uDFDD\uFE0F",
+            highlights = "Cebu City, Mactan, Bohol Chocolate Hills, Panglao, Dumaguete"
+        ),
+        PhilippineRegionInfo(
+            id = "region_8",
+            name = "Region VIII (Eastern Visayas)",
+            shortName = "Eastern Visayas",
+            islandGroup = "Visayas",
+            description = "Longest bridges, limestone rock formations and historic landings",
+            emoji = "\uD83C\uDF09",
+            highlights = "San Juanico Bridge, Leyte, Samar Sohoton Caves, Calicoan"
+        ),
+
+        // Mindanao
+        PhilippineRegionInfo(
+            id = "region_9",
+            name = "Region IX (Zamboanga)",
+            shortName = "Zamboanga Peninsula",
+            islandGroup = "Mindanao",
+            description = "City of Flowers, pink sand beaches, Spanish-creole heritage",
+            emoji = "\uD83C\uDF3A",
+            highlights = "Zamboanga City, Fort Pilar, Sta. Cruz Pink Beach, Dapitan"
+        ),
+        PhilippineRegionInfo(
+            id = "region_10",
+            name = "Region X (Northern Mindanao)",
+            shortName = "Northern Mindanao",
+            islandGroup = "Mindanao",
+            description = "White water rapids, volcanic island born of fire and pineapple plateaus",
+            emoji = "\uD83C\uDF4D",
+            highlights = "Cagayan de Oro, Bukidnon, Camiguin Island, Iligan Falls"
+        ),
+        PhilippineRegionInfo(
+            id = "region_11",
+            name = "Region XI (Davao)",
+            shortName = "Davao Region",
+            islandGroup = "Mindanao",
+            description = "Majestic Mount Apo peak, durian capital and island garden of Samal",
+            emoji = "\uD83E\uDD85",
+            highlights = "Davao City, Mt. Apo, Samal Island, Aliwagwag Falls"
+        ),
+        PhilippineRegionInfo(
+            id = "region_12",
+            name = "Region XII (SOCCSKSARGEN)",
+            shortName = "SOCCSKSARGEN",
+            islandGroup = "Mindanao",
+            description = "Tuna capital of the Philippines, Lake Sebu waterfalls and T'nalak weaving",
+            emoji = "\uD83D\uDC1F",
+            highlights = "General Santos City, Lake Sebu 7 Falls, Asik-Asik Falls"
+        ),
+        PhilippineRegionInfo(
+            id = "region_13",
+            name = "Region XIII (Caraga)",
+            shortName = "Caraga",
+            islandGroup = "Mindanao",
+            description = "Surfing capital of the Philippines, enchanted rivers and ancient balangay",
+            emoji = "\uD83C\uDFC4",
+            highlights = "Siargao Island, Hinatuan Enchanted River, Butuan, Tinuy-an"
+        ),
+        PhilippineRegionInfo(
+            id = "barmm",
+            name = "BARMM (Bangsamoro)",
+            shortName = "Bangsamoro",
+            islandGroup = "Mindanao",
+            description = "Grand Mosques, scenic Lake Lanao, Torogan royal houses and island atolls",
+            emoji = "\uD83D\uDD4C",
+            highlights = "Grand Mosque of Cotabato, Lake Lanao, Sulu, Tawi-Tawi"
+        )
+    )
+
+    fun getRegionInfo(regionName: String): PhilippineRegionInfo {
+        return REGIONS.firstOrNull { it.name.equals(regionName, ignoreCase = true) }
+            ?: PhilippineRegionInfo(
+                id = "custom",
+                name = regionName,
+                shortName = regionName,
+                islandGroup = "Philippines",
+                description = "Philippine administrative region",
+                emoji = "\uD83C\uDDF5\uD83C\uDDED",
+                highlights = regionName
+            )
+    }
+
     val REGION_LIST = listOf(
         "All",
         "NCR (Metro Manila)",

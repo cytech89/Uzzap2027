@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,14 +21,28 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.ReportProblem
 import androidx.compose.material.icons.filled.Tag
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -65,9 +80,16 @@ fun RoomDetailScreen(
     messages: List<RoomMessageEntity>,
     onBack: () -> Unit,
     onSendMessage: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onToggleJoin: ((Boolean) -> Unit)? = null,
+    onReportRoom: ((String, String, String) -> Unit)? = null
 ) {
     var inputText by remember { mutableStateOf("") }
+    var showRoomMenu by remember { mutableStateOf(false) }
+    var showReportRoomDialog by remember { mutableStateOf(false) }
+    var reportRoomReason by remember { mutableStateOf("Inappropriate Content") }
+    var reportRoomDetails by remember { mutableStateOf("") }
+    var reportRoomSubmitted by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
     LaunchedEffect(messages.size) {
@@ -134,6 +156,89 @@ fun RoomDetailScreen(
                         fontWeight = FontWeight.Medium
                     )
                 }
+
+                // JOIN / LEAVE ROOM BUTTON IN TOP BAR
+                if (room != null && onToggleJoin != null) {
+                    if (room.isJoined) {
+                        OutlinedButton(
+                            onClick = { onToggleJoin(false) },
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.7f)),
+                            modifier = Modifier.testTag("room_detail_leave_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Logout,
+                                contentDescription = "Leave Room",
+                                tint = Color(0xFFEF4444),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Leave",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFFEF4444)
+                            )
+                        }
+                    } else {
+                        Button(
+                            onClick = { onToggleJoin(true) },
+                            colors = ButtonDefaults.buttonColors(containerColor = UzzapOrange),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier.testTag("room_detail_join_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Join Room",
+                                tint = Color.White,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = "Join",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                // Room Safety Menu (Report Chatroom)
+                Box {
+                    IconButton(
+                        onClick = { showRoomMenu = true },
+                        modifier = Modifier.testTag("room_more_options_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Options",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showRoomMenu,
+                        onDismissRequest = { showRoomMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Report Chatroom") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.ReportProblem,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            onClick = {
+                                showRoomMenu = false
+                                showReportRoomDialog = true
+                            },
+                            modifier = Modifier.testTag("menu_report_room")
+                        )
+                    }
+                }
             }
         }
 
@@ -161,6 +266,40 @@ fun RoomDetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1
                     )
+                }
+            }
+        }
+
+        // Guest preview notice if user has not joined yet
+        if (room != null && !room.isJoined && onToggleJoin != null) {
+            Surface(
+                color = UzzapOrange.copy(alpha = 0.12f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "\uD83D\uDC4B You're previewing this room. Join to save to your rooms!",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { onToggleJoin(true) },
+                        colors = ButtonDefaults.buttonColors(containerColor = UzzapOrange),
+                        shape = RoundedCornerShape(6.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                        modifier = Modifier.height(28.dp)
+                    ) {
+                        Text("Join Room", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
@@ -222,6 +361,9 @@ fun RoomDetailScreen(
                 IconButton(
                     onClick = {
                         if (inputText.isNotBlank()) {
+                            if (room?.isJoined == false && onToggleJoin != null) {
+                                onToggleJoin(true)
+                            }
                             onSendMessage(inputText.trim())
                             inputText = ""
                         }
@@ -242,6 +384,118 @@ fun RoomDetailScreen(
                 }
             }
         }
+
+        // Report Chatroom Dialog
+        if (showReportRoomDialog && room != null) {
+            AlertDialog(
+                onDismissRequest = { showReportRoomDialog = false },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.ReportProblem,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(28.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        text = "Report #${room.name}",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            text = "Help keep Uzzap chatrooms safe. Reports are reviewed by human moderators in compliance with Google Play & App Store policies.",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Select Reason:",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        val reasons = listOf(
+                            "Inappropriate / NSFW Content",
+                            "Harassment or Bullying",
+                            "Spam / Commercial Ads",
+                            "Hate Speech or Violence",
+                            "Other"
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            reasons.forEach { reason ->
+                                FilterChip(
+                                    selected = reportRoomReason == reason,
+                                    onClick = { reportRoomReason = reason },
+                                    label = { Text(reason, fontSize = 12.sp) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = UzzapOrange.copy(alpha = 0.2f),
+                                        selectedLabelColor = UzzapOrange
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                        OutlinedTextField(
+                            value = reportRoomDetails,
+                            onValueChange = { reportRoomDetails = it },
+                            placeholder = { Text("Optional details...", fontSize = 12.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            maxLines = 3
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            onReportRoom?.invoke(room.id, reportRoomReason, reportRoomDetails)
+                            showReportRoomDialog = false
+                            reportRoomSubmitted = true
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                        modifier = Modifier.testTag("submit_room_report_button")
+                    ) {
+                        Text("Submit Report", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { showReportRoomDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        // Report Room Submitted Dialog
+        if (reportRoomSubmitted) {
+            AlertDialog(
+                onDismissRequest = { reportRoomSubmitted = false },
+                title = {
+                    Text(
+                        text = "Report Received",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                },
+                text = {
+                    Text(
+                        text = "Thank you. Our moderation team reviews reported chatrooms within 24 hours to enforce our Community Guidelines.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { reportRoomSubmitted = false },
+                        colors = ButtonDefaults.buttonColors(containerColor = UzzapOrange)
+                    ) {
+                        Text("OK")
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -254,6 +508,40 @@ fun RoomMessageItem(
     val formattedTime = timeFormat.format(Date(message.timestamp))
 
     if (message.isSystem) {
+        val lowerText = message.message.lowercase()
+        val isJoin = lowerText.contains("join") || lowerText.contains("joins") || lowerText.contains("joined")
+        val isLeave = lowerText.contains("left") || lowerText.contains("leave") || lowerText.contains("leaves")
+
+        val containerColor = when {
+            isJoin -> Color(0xFFE8F5E9)
+            isLeave -> Color(0xFFFFEBEE)
+            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
+        }
+
+        val borderColor = when {
+            isJoin -> Color(0xFFC8E6C9)
+            isLeave -> Color(0xFFFFCDD2)
+            else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        }
+
+        val textColor = when {
+            isJoin -> Color(0xFF1B5E20)
+            isLeave -> Color(0xFFB71C1C)
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        }
+
+        val iconTint = when {
+            isJoin -> Color(0xFF2E7D32)
+            isLeave -> Color(0xFFC62828)
+            else -> UzzapOrange
+        }
+
+        val iconVector = when {
+            isJoin -> Icons.Default.PersonAdd
+            isLeave -> Icons.AutoMirrored.Filled.Logout
+            else -> Icons.Default.Info
+        }
+
         Box(
             modifier = modifier
                 .fillMaxWidth()
@@ -261,15 +549,35 @@ fun RoomMessageItem(
             contentAlignment = Alignment.Center
         ) {
             Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
-                shape = RoundedCornerShape(12.dp)
+                color = containerColor,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, borderColor),
+                modifier = Modifier.testTag("system_indicator_${message.id}")
             ) {
-                Text(
-                    text = message.message,
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                ) {
+                    Icon(
+                        imageVector = iconVector,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = message.message,
+                        fontSize = 11.sp,
+                        fontWeight = if (isJoin || isLeave) FontWeight.SemiBold else FontWeight.Medium,
+                        color = textColor
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "• $formattedTime",
+                        fontSize = 9.sp,
+                        color = textColor.copy(alpha = 0.75f)
+                    )
+                }
             }
         }
         return

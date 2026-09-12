@@ -329,18 +329,26 @@ class UzzapRepository(
         val room = chatroomDao.getChatroomById(roomId) ?: return
         chatroomDao.updateJoinState(roomId, join, if (join) 1 else -1)
 
+        val profile = userDao.getProfile()
+        val nickname = profile?.displayName?.split(" ")?.firstOrNull()?.ifBlank { null }
+            ?: profile?.displayName?.ifBlank { null }
+            ?: profile?.username
+            ?: "Juan"
+
         val now = System.currentTimeMillis()
+        val noticeText = if (join) "$nickname joins the chat" else "$nickname left the chat"
+
         val systemNotice = RoomMessageEntity(
             id = "rm_${UUID.randomUUID().toString().take(8)}",
             roomId = roomId,
             senderUsername = "System",
             senderRole = RoomRole.ADMIN,
-            message = if (join) "You joined ${room.name}." else "You left ${room.name}.",
+            message = noticeText,
             timestamp = now,
             isSystem = true
         )
         chatroomDao.insertRoomMessage(systemNotice)
-
+        firestoreService.sendRoomMessage(roomId, systemNotice)
         firestoreService.updateRoomChatterCount(roomId, if (join) 1 else -1)
     }
 
@@ -421,5 +429,24 @@ class UzzapRepository(
             initCloudSync()
         }
         return result
+    }
+
+    suspend fun getContactByUsername(username: String): ContactEntity? {
+        return contactDao.getContactByUsername(username)
+    }
+
+    suspend fun submitReport(target: String, reason: String, details: String) {
+        val myProfile = userDao.getProfile()
+        val myUsername = myProfile?.username ?: "anonymous"
+        firestoreService.submitReport(myUsername, target, reason, details)
+    }
+
+    suspend fun deleteAccountData() {
+        val myProfile = userDao.getProfile()
+        val myUsername = myProfile?.username
+        if (myUsername != null) {
+            firestoreService.deleteUserCloudData(myUsername)
+        }
+        database.clearAllTables()
     }
 }

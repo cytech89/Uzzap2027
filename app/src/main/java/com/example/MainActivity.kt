@@ -19,10 +19,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Tag
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -58,6 +60,7 @@ import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.ProfileScreen
 import com.example.ui.screens.RoomDetailScreen
 import com.example.ui.screens.RoomsScreen
+import com.example.ui.screens.SettingsScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.UzzapOrange
 import com.example.ui.theme.UzzapOrangeContainer
@@ -104,6 +107,12 @@ fun UzzapApp(
     val isPresenceMenuOpen by viewModel.isPresenceMenuOpen.collectAsStateWithLifecycle()
     val buzzTrigger by viewModel.buzzShakeTrigger.collectAsStateWithLifecycle()
     val firestoreSyncStatus by viewModel.firestoreSyncStatus.collectAsStateWithLifecycle()
+
+    val notificationsEnabled by viewModel.notificationsEnabled.collectAsStateWithLifecycle()
+    val soundEffectsEnabled by viewModel.soundEffectsEnabled.collectAsStateWithLifecycle()
+    val enterKeySends by viewModel.enterKeySends.collectAsStateWithLifecycle()
+    val cloudPresenceSync by viewModel.cloudPresenceSync.collectAsStateWithLifecycle()
+    val autoSaveHistory by viewModel.autoSaveHistory.collectAsStateWithLifecycle()
 
     val activeConvo = conversations.firstOrNull { it.id == activeConversationId }
     val activeRoom = chatrooms.firstOrNull { it.id == activeRoomId }
@@ -260,6 +269,27 @@ fun UzzapApp(
                         ),
                         modifier = Modifier.testTag("nav_profile")
                     )
+
+                    // 5. Settings
+                    NavigationBarItem(
+                        selected = currentTab == MainTab.SETTINGS,
+                        onClick = { viewModel.setTab(MainTab.SETTINGS) },
+                        icon = {
+                            Icon(
+                                imageVector = if (currentTab == MainTab.SETTINGS) Icons.Filled.Settings else Icons.Outlined.Settings,
+                                contentDescription = "Settings"
+                            )
+                        },
+                        label = { Text("Settings", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = UzzapOrange,
+                            selectedTextColor = UzzapOrange,
+                            indicatorColor = UzzapOrange.copy(alpha = 0.2f),
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier.testTag("nav_settings")
+                    )
                 }
             }
         }
@@ -277,7 +307,15 @@ fun UzzapApp(
                         onBack = { viewModel.closeConversation() },
                         onSendMessage = { text, replyTo -> viewModel.sendMessage(text, replyTo) },
                         onSendBuzz = { viewModel.sendBuzz() },
-                        buzzTrigger = buzzTrigger
+                        buzzTrigger = buzzTrigger,
+                        onBlockUser = { username -> viewModel.blockUser(username) },
+                        onReportUser = { username, reason, details ->
+                            viewModel.submitReport(
+                                target = "user:$username",
+                                reason = reason,
+                                details = details
+                            )
+                        }
                     )
                 }
                 activeRoomId != null -> {
@@ -285,7 +323,19 @@ fun UzzapApp(
                         room = activeRoom,
                         messages = activeRoomMessages,
                         onBack = { viewModel.closeRoom() },
-                        onSendMessage = { text -> viewModel.sendRoomMessage(text) }
+                        onSendMessage = { text -> viewModel.sendRoomMessage(text) },
+                        onToggleJoin = { join ->
+                            activeRoom?.let { r ->
+                                viewModel.joinOrLeaveRoom(r.id, join)
+                            }
+                        },
+                        onReportRoom = { roomId, reason, details ->
+                            viewModel.submitReport(
+                                target = "room:$roomId",
+                                reason = reason,
+                                details = details
+                            )
+                        }
                     )
                 }
                 else -> {
@@ -345,11 +395,36 @@ fun UzzapApp(
                                     totalBuddies = contacts.size,
                                     totalChats = conversations.size,
                                     totalRooms = chatrooms.count { it.isJoined },
+                                    joinedRooms = chatrooms.filter { it.isJoined },
                                     firestoreSyncStatus = firestoreSyncStatus,
                                     onSyncNowClick = { viewModel.syncProfileWithCloud() },
                                     onEditPresenceClick = { viewModel.setPresenceMenuOpen(true) },
+                                    onUpdatePresence = { presence, statusMsg -> viewModel.updatePresence(presence, statusMsg) },
+                                    onUpdateProfile = { name, status, emoji, phone -> viewModel.updateFullProfile(name, status, emoji, phone) },
+                                    onOpenSettings = { viewModel.setTab(MainTab.SETTINGS) },
+                                    onOpenRoom = { roomId -> viewModel.openRoom(roomId) },
+                                    onBrowseRooms = { viewModel.setTab(MainTab.ROOMS) }
+                                )
+                            }
+                            MainTab.SETTINGS -> {
+                                SettingsScreen(
+                                    profile = profile,
+                                    firestoreSyncStatus = firestoreSyncStatus,
+                                    notificationsEnabled = notificationsEnabled,
+                                    soundEffectsEnabled = soundEffectsEnabled,
+                                    enterKeySends = enterKeySends,
+                                    cloudPresenceSync = cloudPresenceSync,
+                                    autoSaveHistory = autoSaveHistory,
                                     onToggleVibration = { viewModel.updateVibrationSetting(it) },
-                                    onLogoutClick = { viewModel.logout(context) }
+                                    onToggleNotifications = { viewModel.updateNotificationSetting(it) },
+                                    onToggleSoundEffects = { viewModel.updateSoundSetting(it) },
+                                    onToggleEnterKeySends = { viewModel.updateEnterKeySends(it) },
+                                    onToggleCloudPresenceSync = { viewModel.updateCloudPresenceSync(it) },
+                                    onToggleAutoSaveHistory = { viewModel.updateAutoSaveHistory(it) },
+                                    onSyncNowClick = { viewModel.syncProfileWithCloud() },
+                                    onNavigateToProfile = { viewModel.setTab(MainTab.PROFILE) },
+                                    onLogoutClick = { viewModel.logout(context) },
+                                    onDeleteAccount = { viewModel.deleteAccount(context) }
                                 )
                             }
                         }

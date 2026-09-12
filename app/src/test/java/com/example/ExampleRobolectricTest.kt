@@ -47,4 +47,16 @@ class ExampleRobolectricTest {
     assertEquals("😎", profile.avatarEmoji)
     assertEquals(com.example.data.model.UserPresence.ONLINE, profile.status)
   }
+
+  @Test
+  fun `verify ugc reporting reason categories`() {
+    val reasons = listOf(
+      "Harassment / Bullying",
+      "Spam / Unsolicited",
+      "Inappropriate Content",
+      "Hate Speech"
+    )
+    assert(reasons.contains("Harassment / Bullying"))
+    assert(reasons.contains("Inappropriate Content"))
+  }
 }

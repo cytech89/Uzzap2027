@@ -1,9 +1,17 @@
 package com.example.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,35 +22,42 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tag
-import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,128 +67,309 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.model.ChatroomEntity
 import com.example.data.model.UserPresence
 import com.example.data.model.UserProfileEntity
 import com.example.data.remote.firestore.FirestoreSyncStatus
 import com.example.ui.components.PresenceDot
 import com.example.ui.components.UzzapAvatar
+import com.example.ui.theme.PresenceAway
+import com.example.ui.theme.PresenceBusy
+import com.example.ui.theme.PresenceOffline
+import com.example.ui.theme.PresenceOnline
 import com.example.ui.theme.UzzapCyan
 import com.example.ui.theme.UzzapOrange
 import com.example.ui.theme.UzzapOrangeContainer
-import androidx.compose.material.icons.filled.Sync
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProfileScreen(
     profile: UserProfileEntity?,
     totalBuddies: Int,
     totalChats: Int,
     totalRooms: Int,
+    joinedRooms: List<ChatroomEntity> = emptyList(),
     firestoreSyncStatus: FirestoreSyncStatus = FirestoreSyncStatus.CONNECTED,
     onSyncNowClick: () -> Unit = {},
-    onEditPresenceClick: () -> Unit,
-    onToggleVibration: (Boolean) -> Unit,
-    onLogoutClick: () -> Unit = {},
+    onEditPresenceClick: () -> Unit = {},
+    onUpdatePresence: (UserPresence, String) -> Unit = { _, _ -> },
+    onUpdateProfile: (displayName: String, statusMessage: String, avatarEmoji: String, phoneNumber: String) -> Unit = { _, _, _, _ -> },
+    onOpenSettings: () -> Unit = {},
+    onOpenRoom: (String) -> Unit = {},
+    onBrowseRooms: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var notificationsEnabled by remember { mutableStateOf(true) }
-    var showLogoutDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var showEditProfileDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .testTag("profile_screen"),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // User Profile Card
+        // 1. Enhanced Hero Profile Card
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(18.dp),
+                        .padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    UzzapAvatar(
-                        emoji = profile?.avatarEmoji ?: "\uD83D\uDE0E",
-                        bgColor = 0xFFFF5722,
-                        presence = profile?.status ?: UserPresence.ONLINE,
-                        size = 72
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        text = profile?.displayName ?: "Juan Dela Cruz",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Text(
-                        text = "@${profile?.username ?: "juandelacruz"}",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Status Message Pill
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = "\"${profile?.statusMessage ?: "Chatting on Uzzap"}\"",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    // Avatar with Presence & Edit Indicator
+                    Box(contentAlignment = Alignment.BottomEnd) {
+                        UzzapAvatar(
+                            emoji = profile?.avatarEmoji ?: "😎",
+                            bgColor = 0xFFFF5722,
+                            presence = profile?.status ?: UserPresence.ONLINE,
+                            size = 80
                         )
+                        Surface(
+                            onClick = { showEditProfileDialog = true },
+                            shape = CircleShape,
+                            color = UzzapOrange,
+                            modifier = Modifier
+                                .size(28.dp)
+                                .testTag("avatar_edit_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit Avatar",
+                                tint = Color.White,
+                                modifier = Modifier
+                                    .padding(6.dp)
+                                    .size(16.dp)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Presence edit button
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = profile?.displayName ?: "Juan Dela Cruz",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            imageVector = Icons.Default.Verified,
+                            contentDescription = "Verified Smart Uzzap Account",
+                            tint = Color(0xFF10B981),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "@${profile?.username ?: "juandelacruz"}",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        IconButton(
+                            onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = ClipData.newPlainText("Uzzap ID", "@${profile?.username ?: "juandelacruz"}")
+                                clipboard.setPrimaryClip(clip)
+                                Toast.makeText(context, "Uzzap ID copied to clipboard!", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = "Copy Username",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Bio / Status Message Bubble
                     Surface(
-                        onClick = onEditPresenceClick,
                         color = MaterialTheme.colorScheme.surfaceVariant,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, UzzapOrange.copy(alpha = 0.35f)),
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.testTag("edit_status_button")
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showEditProfileDialog = true }
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
                         ) {
-                            PresenceDot(presence = profile?.status ?: UserPresence.ONLINE, size = 10)
-                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Status: ${profile?.status?.label ?: "Online"}",
+                                text = "\"${profile?.statusMessage ?: "Chatting on Uzzap v1.0.14"}\"",
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = UzzapOrange
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 2
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Icon(
                                 imageVector = Icons.Default.Edit,
-                                contentDescription = null,
+                                contentDescription = "Edit Status",
                                 tint = UzzapOrange,
                                 modifier = Modifier.size(14.dp)
                             )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Action Buttons Row: Edit Profile & App Settings
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = { showEditProfileDialog = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = UzzapOrange,
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(42.dp)
+                                .testTag("edit_profile_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Edit Profile", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+
+                        OutlinedButton(
+                            onClick = onOpenSettings,
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.onSurface
+                            ),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(42.dp)
+                                .testTag("profile_open_settings_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = UzzapOrange
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Settings", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     }
                 }
             }
         }
 
-        // Stats Row
+        // 2. Interactive Presence Switcher (Directly on Profile)
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "LIVE AVAILABILITY & PRESENCE",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            letterSpacing = 0.5.sp
+                        )
+
+                        Text(
+                            text = "Broadcasts to Firebase",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF10B981)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Presence Chips
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        PresenceChip(
+                            label = "Online",
+                            presence = UserPresence.ONLINE,
+                            isSelected = profile?.status == UserPresence.ONLINE,
+                            onClick = {
+                                onUpdatePresence(UserPresence.ONLINE, profile?.statusMessage ?: "Online")
+                            }
+                        )
+                        PresenceChip(
+                            label = "Away",
+                            presence = UserPresence.AWAY,
+                            isSelected = profile?.status == UserPresence.AWAY,
+                            onClick = {
+                                onUpdatePresence(UserPresence.AWAY, profile?.statusMessage ?: "Away")
+                            }
+                        )
+                        PresenceChip(
+                            label = "Busy",
+                            presence = UserPresence.BUSY,
+                            isSelected = profile?.status == UserPresence.BUSY,
+                            onClick = {
+                                onUpdatePresence(UserPresence.BUSY, profile?.statusMessage ?: "Busy")
+                            }
+                        )
+                        PresenceChip(
+                            label = "Invisible",
+                            presence = UserPresence.INVISIBLE,
+                            isSelected = profile?.status == UserPresence.INVISIBLE,
+                            onClick = {
+                                onUpdatePresence(UserPresence.INVISIBLE, profile?.statusMessage ?: "Invisible")
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        // 3. Stats Row
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -200,179 +396,13 @@ fun ProfileScreen(
             }
         }
 
-        // Mobile / Account Details
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "ACCOUNT & MOBILE",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        letterSpacing = 0.5.sp
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Phone,
-                                contentDescription = null,
-                                tint = UzzapOrange,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = profile?.phoneNumber ?: "+63 918 555 1014",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "Smart / Kolipri SIM Connected",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "Verified",
-                                tint = Color(0xFF10B981),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Verified",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF10B981)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Preferences & Settings
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "PREFERENCES",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        letterSpacing = 0.5.sp
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Vibration / Buzz Toggle
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Vibration,
-                                contentDescription = null,
-                                tint = UzzapOrange,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "Buzz Vibration & Shake",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "Vibrate phone when a buddy buzzes",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        Switch(
-                            checked = profile?.vibrationEnabled ?: true,
-                            onCheckedChange = onToggleVibration,
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = UzzapOrange
-                            )
-                        )
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-
-                    // Notifications Toggle
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = null,
-                                tint = UzzapOrange,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "Push & SMS Notifications",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "Offline message delivery alerts",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        Switch(
-                            checked = notificationsEnabled,
-                            onCheckedChange = { notificationsEnabled = it },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = UzzapOrange
-                            )
-                        )
-                    }
-                }
-            }
-        }
-
-        // Cloud & Firestore Integration Card
+        // 4. Firebase Cloud Identity & Connection
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 border = BorderStroke(1.dp, UzzapCyan.copy(alpha = 0.5f)),
                 shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -381,13 +411,22 @@ fun ProfileScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "FIRESTORE CLOUD INTEGRATION",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            letterSpacing = 0.5.sp
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.CloudDone,
+                                contentDescription = null,
+                                tint = UzzapCyan,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "FIREBASE CLOUD PROFILE",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
 
                         Surface(
                             shape = RoundedCornerShape(12.dp),
@@ -404,7 +443,7 @@ fun ProfileScreen(
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(8.dp)
+                                        .size(6.dp)
                                         .clip(CircleShape)
                                         .background(
                                             when (firestoreSyncStatus) {
@@ -415,7 +454,7 @@ fun ProfileScreen(
                                             }
                                         )
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = firestoreSyncStatus.label,
                                     fontSize = 10.sp,
@@ -434,105 +473,26 @@ fun ProfileScreen(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
-                        text = "Firebase Project: uzzap2027",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        text = "Cloud Document: users/${profile?.username ?: "juandelacruz"}",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Real-time synchronization enabled across all Uzzap services:",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "Your avatar, status, presence, and chatrooms sync in real-time with Google Cloud Firestore across all active buddies.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 15.sp
                     )
 
                     Spacer(modifier = Modifier.height(10.dp))
-
-                    // Feature checklist
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = Color(0xFF2E7D32),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "1-on-1 Direct Messaging & Classic BUZZ",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = Color(0xFF2E7D32),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Philippine Regional & Custom Chatrooms",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = Color(0xFF2E7D32),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Live Buddy Presence & Status Messages",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = Color(0xFF2E7D32),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Cross-Device Friend Requests & Sync",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = Color(0xFF2E7D32),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Offline-First Local Cache (Room DB + Cloud)",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
 
                     Button(
                         onClick = onSyncNowClick,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(44.dp),
+                            .height(40.dp)
+                            .testTag("profile_sync_cloud_button"),
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = UzzapCyan,
@@ -541,59 +501,17 @@ fun ProfileScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Sync,
-                            contentDescription = "Sync Profile",
-                            modifier = Modifier.size(18.dp)
+                            contentDescription = "Sync Cloud",
+                            modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Sync Profile with Firestore Now",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Sync Profile with Cloud Now", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
 
-        // About Uzzap Tribute
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                border = androidx.compose.foundation.BorderStroke(1.dp, UzzapOrange.copy(alpha = 0.35f)),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = null,
-                        tint = UzzapOrange,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = "About Uzzap Mobile v1.0.14",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Originally engineered by Smart Communications & Kolipri on Java ME / MIDP. Re-engineered as a modern Android app with Jetpack Compose, Material 3, Room local database, real-time presence, chatrooms, and the classic BUZZ!",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 16.sp
-                        )
-                    }
-                }
-            }
-        }
-
-        // Session & Security / Log Out
+        // 5. Uzzap Heritage & Community Badges
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -603,7 +521,7 @@ fun ProfileScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "SESSION & SECURITY",
+                        text = "COMMUNITY BADGES & REPUTATION",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -611,89 +529,468 @@ fun ProfileScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    OutlinedButton(
-                        onClick = { showLogoutDialog = true },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp)
-                            .testTag("logout_button"),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        ),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.6f))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Logout,
-                            contentDescription = "Log Out",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(20.dp)
+                        BadgePill(
+                            icon = Icons.Default.MilitaryTech,
+                            title = "Uzzap OG",
+                            subtitle = "Kolipri Era",
+                            color = UzzapOrange,
+                            modifier = Modifier.weight(1f)
                         )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "Log Out of Uzzap",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.error
+                        BadgePill(
+                            icon = Icons.Default.LocalFireDepartment,
+                            title = "Firebase Synced",
+                            subtitle = "Live Cloud",
+                            color = Color(0xFFEF4444),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        BadgePill(
+                            icon = Icons.Default.Phone,
+                            title = "Smart SIM",
+                            subtitle = "Verified +63",
+                            color = Color(0xFF10B981),
+                            modifier = Modifier.weight(1f)
+                        )
+                        BadgePill(
+                            icon = Icons.Default.Public,
+                            title = "Pinoy Chatter",
+                            subtitle = "Philippines",
+                            color = UzzapCyan,
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
             }
         }
+
+        // 6. My Joined Chatrooms Section
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "MY JOINED CHATROOMS",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            letterSpacing = 0.5.sp
+                        )
+
+                        TextButton(
+                            onClick = onBrowseRooms,
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text("Browse All", fontSize = 12.sp, color = UzzapOrange, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (joinedRooms.isEmpty()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "You haven't joined any Philippine rooms yet",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = onBrowseRooms,
+                                    colors = ButtonDefaults.buttonColors(containerColor = UzzapOrange),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.height(36.dp)
+                                ) {
+                                    Text("Explore Chatrooms", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            joinedRooms.take(4).forEach { room ->
+                                Surface(
+                                    onClick = { onOpenRoom(room.id) },
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Default.Tag,
+                                                contentDescription = null,
+                                                tint = UzzapOrange,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Column {
+                                                Text(
+                                                    text = room.name,
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Text(
+                                                    text = "${room.category} • ${room.chatterCount} online",
+                                                    fontSize = 11.sp,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                            contentDescription = "Open Room",
+                                            tint = UzzapOrange,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 7. Shortcut Card to Full App Settings
+        item {
+            Card(
+                onClick = onOpenSettings,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("open_settings_shortcut_card")
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(UzzapOrange.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = null,
+                                tint = UzzapOrange,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Column {
+                            Text(
+                                text = "App Settings & Preferences",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Notifications, Buzz Vibration, Security & Created by CyCy",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Go to Settings",
+                        tint = UzzapOrange,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
     }
 
-    if (showLogoutDialog) {
+    // Full Edit Profile Dialog
+    if (showEditProfileDialog) {
+        var editName by remember { mutableStateOf(profile?.displayName ?: "Juan Dela Cruz") }
+        var editStatus by remember { mutableStateOf(profile?.statusMessage ?: "Chatting on Uzzap \uD83D\uDCF1") }
+        var editEmoji by remember { mutableStateOf(profile?.avatarEmoji ?: "😎") }
+        var editPhone by remember { mutableStateOf(profile?.phoneNumber ?: "+63 918 555 1014") }
+
+        val emojiOptions = listOf("😎", "🤙", "🇵🇭", "📱", "🤠", "👾", "🎮", "🛵", "🥥", "🍕", "⚡", "🌟", "🐱", "🎧", "☕", "🏝️")
+        val statusSuggestions = listOf(
+            "Chatting on Uzzap \uD83D\uDCF1",
+            "Tambay sa Chatroom \uD83C\uDDF5\uD83C\uDDED",
+            "Available on GPRS ⚡",
+            "Low batt text me na lang \uD83D\uDD0B",
+            "Nokia 3310 era \uD83D\uDCDE",
+            "Kain muna tayo! \uD83C\uDF72",
+            "Tara chat! 🤙"
+        )
+
         AlertDialog(
-            onDismissRequest = { showLogoutDialog = false },
+            onDismissRequest = { showEditProfileDialog = false },
             icon = {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Logout,
+                    imageVector = Icons.Default.Edit,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
+                    tint = UzzapOrange,
                     modifier = Modifier.size(28.dp)
                 )
             },
             title = {
-                Text(
-                    text = "Log Out of Uzzap?",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
+                Text("Edit Uzzap Profile", fontWeight = FontWeight.Bold, fontSize = 18.sp)
             },
             text = {
-                Text(
-                    text = "You will be signed out of this session and your status will be set to Offline. You can log back in at any time.",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        Text(
+                            text = "Avatar Emoji",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            emojiOptions.forEach { emoji ->
+                                Surface(
+                                    onClick = { editEmoji = emoji },
+                                    shape = CircleShape,
+                                    color = if (editEmoji == emoji) UzzapOrange.copy(alpha = 0.25f) else MaterialTheme.colorScheme.surfaceVariant,
+                                    border = if (editEmoji == emoji) BorderStroke(2.dp, UzzapOrange) else null,
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(text = emoji, fontSize = 18.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    item {
+                        OutlinedTextField(
+                            value = editName,
+                            onValueChange = { editName = it },
+                            label = { Text("Display Name") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    item {
+                        OutlinedTextField(
+                            value = editStatus,
+                            onValueChange = { editStatus = it },
+                            label = { Text("Status Message / Bio") },
+                            maxLines = 2,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    item {
+                        Text(
+                            text = "Quick Status Pickers",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            statusSuggestions.forEach { suggestion ->
+                                Surface(
+                                    onClick = { editStatus = suggestion },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (editStatus == suggestion) UzzapOrange.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
+                                    border = if (editStatus == suggestion) BorderStroke(1.dp, UzzapOrange) else null
+                                ) {
+                                    Text(
+                                        text = suggestion,
+                                        fontSize = 10.sp,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    item {
+                        OutlinedTextField(
+                            value = editPhone,
+                            onValueChange = { editPhone = it },
+                            label = { Text("Mobile Number (Smart/Kolipri)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        showLogoutDialog = false
-                        onLogoutClick()
+                        onUpdateProfile(editName, editStatus, editEmoji, editPhone)
+                        showEditProfileDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = UzzapOrange),
                     shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.testTag("confirm_logout_button")
+                    modifier = Modifier.testTag("save_profile_button")
                 ) {
-                    Text("Log Out", fontWeight = FontWeight.Bold)
+                    Text("Save Changes", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 OutlinedButton(
-                    onClick = { showLogoutDialog = false },
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.testTag("cancel_logout_button")
+                    onClick = { showEditProfileDialog = false },
+                    shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("Cancel")
                 }
-            },
-            modifier = Modifier.testTag("logout_dialog")
+            }
         )
+    }
+}
+
+@Composable
+private fun PresenceChip(
+    label: String,
+    presence: UserPresence,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val dotColor = when (presence) {
+        UserPresence.ONLINE -> PresenceOnline
+        UserPresence.AWAY -> PresenceAway
+        UserPresence.BUSY -> PresenceBusy
+        UserPresence.INVISIBLE, UserPresence.OFFLINE -> PresenceOffline
+    }
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = if (isSelected) UzzapOrange.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+        border = if (isSelected) BorderStroke(1.5.dp, UzzapOrange) else null,
+        modifier = Modifier.testTag("presence_chip_${presence.name.lowercase()}")
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(dotColor)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSelected) UzzapOrange else MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+private fun BadgePill(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.35f)),
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier.padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(color.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(
+                    text = title,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = subtitle,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 
@@ -701,7 +998,7 @@ fun ProfileScreen(
 fun StatCard(
     title: String,
     value: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     modifier: Modifier = Modifier
 ) {
     Card(

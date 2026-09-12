@@ -716,6 +716,36 @@ class UzzapFirestoreService(
         }
     }
 
+    fun submitReport(
+        reporterUsername: String,
+        target: String,
+        reason: String,
+        details: String
+    ) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val reportData = hashMapOf(
+                    "reporter" to reporterUsername,
+                    "target" to target,
+                    "reason" to reason,
+                    "details" to details,
+                    "timestamp" to System.currentTimeMillis()
+                )
+                firestore.collection("ugc_reports").add(reportData)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error submitting report", e)
+            }
+        }
+    }
+
+    suspend fun deleteUserCloudData(username: String) {
+        try {
+            firestore.collection(USERS_COLLECTION).document(username).delete().await()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deleting user cloud data", e)
+        }
+    }
+
     fun cleanUp() {
         activeListeners.forEach { it.remove() }
         activeListeners.clear()

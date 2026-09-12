@@ -28,19 +28,27 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.ReportProblem
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -86,11 +94,19 @@ fun ChatDetailScreen(
     onSendMessage: (String, String?) -> Unit,
     onSendBuzz: () -> Unit,
     buzzTrigger: Int,
+    onBlockUser: ((String) -> Unit)? = null,
+    onReportUser: ((String, String, String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var inputText by remember { mutableStateOf("") }
     var replyToMessage by remember { mutableStateOf<MessageEntity?>(null) }
     var showEmoticons by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
+    var showReportDialog by remember { mutableStateOf(false) }
+    var showBlockDialog by remember { mutableStateOf(false) }
+    var reportReason by remember { mutableStateOf("Harassment / Bullying") }
+    var reportDetails by remember { mutableStateOf("") }
+    var reportSubmitted by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState()
 
@@ -182,6 +198,57 @@ fun ChatDetailScreen(
                                 tint = UzzapOrange,
                                 modifier = Modifier.size(20.dp)
                             )
+                        }
+
+                        // More options: Report & Block for safety compliance
+                        Box {
+                            IconButton(
+                                onClick = { showMenu = true },
+                                modifier = Modifier.testTag("chat_more_options_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "Options",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Report User") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.ReportProblem,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        showReportDialog = true
+                                    },
+                                    modifier = Modifier.testTag("menu_report_user")
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Block Contact") },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Block,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        showBlockDialog = true
+                                    },
+                                    modifier = Modifier.testTag("menu_block_user")
+                                )
+                            }
                         }
                     }
                 }
@@ -369,6 +436,165 @@ fun ChatDetailScreen(
                     }
                 }
             }
+        }
+
+        // Safety Dialogs: UGC Report Dialog
+        if (showReportDialog && conversation != null) {
+            AlertDialog(
+                onDismissRequest = { showReportDialog = false },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.ReportProblem,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(28.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        text = "Report @${conversation.recipientUsername}",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            text = "Help keep Uzzap safe. Reports are reviewed under our Community Safety Guidelines.",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Select Reason:",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        val reasons = listOf(
+                            "Harassment / Bullying",
+                            "Spam / Unsolicited",
+                            "Inappropriate Content",
+                            "Hate Speech",
+                            "Other"
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            reasons.forEach { reason ->
+                                FilterChip(
+                                    selected = reportReason == reason,
+                                    onClick = { reportReason = reason },
+                                    label = { Text(reason, fontSize = 12.sp) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = UzzapOrange.copy(alpha = 0.2f),
+                                        selectedLabelColor = UzzapOrange
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                        OutlinedTextField(
+                            value = reportDetails,
+                            onValueChange = { reportDetails = it },
+                            placeholder = { Text("Optional details...", fontSize = 12.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            maxLines = 3
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            onReportUser?.invoke(conversation.recipientUsername, reportReason, reportDetails)
+                            showReportDialog = false
+                            reportSubmitted = true
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                        modifier = Modifier.testTag("submit_report_button")
+                    ) {
+                        Text("Submit Report", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { showReportDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        // Safety Dialogs: Block User Dialog
+        if (showBlockDialog && conversation != null) {
+            AlertDialog(
+                onDismissRequest = { showBlockDialog = false },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Block,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(28.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        text = "Block @${conversation.recipientUsername}?",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                },
+                text = {
+                    Text(
+                        text = "They will no longer be able to message or BUZZ you. They will be removed from your buddy list and your chat will close.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showBlockDialog = false
+                            onBlockUser?.invoke(conversation.recipientUsername)
+                            onBack()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                        modifier = Modifier.testTag("confirm_block_button")
+                    ) {
+                        Text("Block User", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { showBlockDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        // Report Submitted Confirmation Dialog
+        if (reportSubmitted) {
+            AlertDialog(
+                onDismissRequest = { reportSubmitted = false },
+                title = {
+                    Text(
+                        text = "Report Submitted",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                },
+                text = {
+                    Text(
+                        text = "Thank you for reporting this incident. Our safety team reviews reported accounts and messages according to Google Play & App Store policies. You can also block this user to prevent future messages.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { reportSubmitted = false },
+                        colors = ButtonDefaults.buttonColors(containerColor = UzzapOrange)
+                    ) {
+                        Text("OK")
+                    }
+                }
+            )
         }
     }
 }

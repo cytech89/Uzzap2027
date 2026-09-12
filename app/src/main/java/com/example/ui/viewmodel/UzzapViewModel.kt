@@ -30,7 +30,8 @@ enum class MainTab(val title: String) {
     BUDDIES("Buddies"),
     CHATS("Chats"),
     ROOMS("Rooms"),
-    PROFILE("Profile")
+    PROFILE("Profile"),
+    SETTINGS("Settings")
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -63,6 +64,9 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
     private val _roomCategoryFilter = MutableStateFlow("All")
     val roomCategoryFilter: StateFlow<String> = _roomCategoryFilter.asStateFlow()
 
+    private val _selectedRegion = MutableStateFlow<String?>(null)
+    val selectedRegion: StateFlow<String?> = _selectedRegion.asStateFlow()
+
     // UI Dialogs
     private val _isAddContactDialogOpen = MutableStateFlow(false)
     val isAddContactDialogOpen: StateFlow<Boolean> = _isAddContactDialogOpen.asStateFlow()
@@ -78,6 +82,23 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _authError = MutableStateFlow<String?>(null)
     val authError: StateFlow<String?> = _authError.asStateFlow()
+
+    // Settings State
+    private val settingsPrefs = application.getSharedPreferences("uzzap_settings", Context.MODE_PRIVATE)
+    private val _notificationsEnabled = MutableStateFlow(settingsPrefs.getBoolean("notifications_enabled", true))
+    val notificationsEnabled: StateFlow<Boolean> = _notificationsEnabled.asStateFlow()
+
+    private val _soundEffectsEnabled = MutableStateFlow(settingsPrefs.getBoolean("sound_effects_enabled", true))
+    val soundEffectsEnabled: StateFlow<Boolean> = _soundEffectsEnabled.asStateFlow()
+
+    private val _enterKeySends = MutableStateFlow(settingsPrefs.getBoolean("enter_key_sends", true))
+    val enterKeySends: StateFlow<Boolean> = _enterKeySends.asStateFlow()
+
+    private val _cloudPresenceSync = MutableStateFlow(settingsPrefs.getBoolean("cloud_presence_sync", true))
+    val cloudPresenceSync: StateFlow<Boolean> = _cloudPresenceSync.asStateFlow()
+
+    private val _autoSaveHistory = MutableStateFlow(settingsPrefs.getBoolean("auto_save_history", true))
+    val autoSaveHistory: StateFlow<Boolean> = _autoSaveHistory.asStateFlow()
 
     private val _buzzShakeTrigger = MutableStateFlow(0)
     val buzzShakeTrigger: StateFlow<Int> = _buzzShakeTrigger.asStateFlow()
@@ -169,6 +190,14 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
         _roomCategoryFilter.value = filter
     }
 
+    fun selectRegion(region: String?) {
+        _selectedRegion.value = region
+    }
+
+    fun clearSelectedRegion() {
+        _selectedRegion.value = null
+    }
+
     // Dialog Controls
     fun setAddContactDialogOpen(open: Boolean) {
         _isAddContactDialogOpen.value = open
@@ -193,6 +222,49 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
     fun updateVibrationSetting(enabled: Boolean) {
         viewModelScope.launch {
             repository.updateVibration(enabled)
+        }
+    }
+
+    fun updateNotificationSetting(enabled: Boolean) {
+        _notificationsEnabled.value = enabled
+        settingsPrefs.edit().putBoolean("notifications_enabled", enabled).apply()
+    }
+
+    fun updateSoundSetting(enabled: Boolean) {
+        _soundEffectsEnabled.value = enabled
+        settingsPrefs.edit().putBoolean("sound_effects_enabled", enabled).apply()
+    }
+
+    fun updateEnterKeySends(enabled: Boolean) {
+        _enterKeySends.value = enabled
+        settingsPrefs.edit().putBoolean("enter_key_sends", enabled).apply()
+    }
+
+    fun updateCloudPresenceSync(enabled: Boolean) {
+        _cloudPresenceSync.value = enabled
+        settingsPrefs.edit().putBoolean("cloud_presence_sync", enabled).apply()
+    }
+
+    fun updateAutoSaveHistory(enabled: Boolean) {
+        _autoSaveHistory.value = enabled
+        settingsPrefs.edit().putBoolean("auto_save_history", enabled).apply()
+    }
+
+    fun updateFullProfile(
+        displayName: String,
+        statusMessage: String,
+        avatarEmoji: String,
+        phoneNumber: String = ""
+    ) {
+        viewModelScope.launch {
+            val current = profile.value ?: return@launch
+            val updated = current.copy(
+                displayName = displayName.trim().ifBlank { current.displayName },
+                statusMessage = statusMessage.trim().ifBlank { current.statusMessage },
+                avatarEmoji = avatarEmoji.ifBlank { current.avatarEmoji },
+                phoneNumber = if (phoneNumber.isNotBlank()) phoneNumber.trim() else current.phoneNumber
+            )
+            repository.updateProfile(updated)
         }
     }
 
@@ -272,6 +344,7 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
             }
             _activeConversationId.value = null
             _activeRoomId.value = null
+            _selectedRegion.value = null
             _isLoggedIn.value = false
         }
     }
@@ -342,5 +415,39 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun login(username: String = "juandelacruz", displayName: String = "Juan Dela Cruz") {
         signIn(username, "")
+    }
+
+    fun submitReport(target: String, reason: String, details: String) {
+        viewModelScope.launch {
+            repository.submitReport(target, reason, details)
+        }
+    }
+
+    fun blockUser(username: String) {
+        viewModelScope.launch {
+            val contact = repository.getContactByUsername(username)
+            if (contact != null) {
+                repository.deleteContact(contact.id)
+            }
+            if (_activeConversationId.value == "convo_$username") {
+                _activeConversationId.value = null
+            }
+        }
+    }
+
+    fun deleteAccount(context: Context) {
+        viewModelScope.launch {
+            try {
+                repository.deleteAccountData()
+                prefs.edit().clear().apply()
+                settingsPrefs.edit().clear().apply()
+                _isLoggedIn.value = false
+                _currentTab.value = MainTab.BUDDIES
+                _activeConversationId.value = null
+                _activeRoomId.value = null
+            } catch (e: Exception) {
+                android.util.Log.e("UzzapViewModel", "Error deleting account", e)
+            }
+        }
     }
 }
