@@ -182,7 +182,7 @@ fun ProfileScreen(
                         Spacer(modifier = Modifier.width(6.dp))
                         Icon(
                             imageVector = Icons.Default.Verified,
-                            contentDescription = "Verified Smart Uzzap Account",
+                            contentDescription = "Verified Uzzap Account",
                             tint = Color(0xFF10B981),
                             modifier = Modifier.size(18.dp)
                         )
@@ -556,7 +556,7 @@ fun ProfileScreen(
                     ) {
                         BadgePill(
                             icon = Icons.Default.Phone,
-                            title = "Smart SIM",
+                            title = "Mobile SIM",
                             subtitle = "Verified +63",
                             color = Color(0xFF10B981),
                             modifier = Modifier.weight(1f)
@@ -731,7 +731,7 @@ fun ProfileScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "Notifications, Buzz Vibration, Security & Created by CyCy",
+                                text = "Notifications, Buzz Vibration, Security & Created by Cy",
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -869,7 +869,7 @@ fun ProfileScreen(
                         OutlinedTextField(
                             value = editPhone,
                             onValueChange = { editPhone = it },
-                            label = { Text("Mobile Number (Smart/Kolipri)") },
+                            label = { Text("Mobile Number") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )

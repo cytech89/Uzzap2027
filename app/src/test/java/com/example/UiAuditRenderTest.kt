@@ -13,7 +13,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import com.example.data.model.ChatroomEntity
 import com.example.data.model.ContactCategory
@@ -35,6 +37,7 @@ import com.example.ui.screens.ProfileScreen
 import com.example.ui.screens.RoomDetailScreen
 import com.example.ui.screens.RoomsScreen
 import com.example.ui.screens.SettingsScreen
+import com.example.ui.screens.SplashScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
@@ -45,6 +48,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 private enum class AuditScreen(val fileName: String) {
+    SPLASH("splash"),
     HEADER("header"),
     LOGIN("login"),
     LOGIN_ERROR("login-error"),
@@ -177,6 +181,29 @@ class UiAuditRenderTest {
         composeTestRule.onNodeWithTag("send_button").assertIsDisplayed()
     }
 
+    @Test
+    @Config(qualifiers = "w320dp-h640dp-mdpi", sdk = [36])
+    fun signUpLoadingShowsProgressStagesInOrder() {
+        composeTestRule.mainClock.autoAdvance = false
+        composeTestRule.setContent {
+            MyApplicationTheme {
+                LoginScreen(isLoading = true)
+            }
+        }
+
+        composeTestRule.onNodeWithTag("signup_tab").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Connecting...").assertExists()
+
+        composeTestRule.mainClock.advanceTimeBy(800L)
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Authenticating...").assertExists()
+
+        composeTestRule.mainClock.advanceTimeBy(800L)
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Initializing...").assertExists()
+    }
+
     private fun renderAuditMatrix(darkTheme: Boolean, variant: String) {
         val selectedScreen = mutableStateOf(AuditScreen.HEADER)
         composeTestRule.setContent {
@@ -200,6 +227,7 @@ class UiAuditRenderTest {
 @Composable
 private fun AuditScreenContent(screen: AuditScreen) {
     when (screen) {
+        AuditScreen.SPLASH -> SplashScreen()
         AuditScreen.HEADER -> Column {
             UzzapTopHeader(
                 profile = auditProfile,

@@ -248,7 +248,7 @@ fun SettingsScreen(
                     // SMS Fallback
                     SettingSwitchItem(
                         icon = Icons.Default.Phone,
-                        title = "Smart / Kolipri SMS Fallback",
+                        title = "SMS Fallback",
                         subtitle = "Forward urgent buddy messages via SMS when offline",
                         checked = smsAlertsEnabled,
                         onCheckedChange = { smsAlertsEnabled = it },
@@ -487,7 +487,7 @@ fun SettingsScreen(
             }
         }
 
-        // 6. ABOUT SECTION WITH "CREATED BY CYCY" (MANDATORY REQUIREMENT)
+        // 6. ABOUT SECTION WITH CREATOR CREDIT
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -552,7 +552,7 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // PROMINENT "CREATED BY CYCY" BADGE / HIGHLIGHT
+                    // PROMINENT CREATOR BADGE / HIGHLIGHT
                     Surface(
                         color = UzzapOrange.copy(alpha = 0.12f),
                         border = BorderStroke(1.dp, UzzapOrange),
@@ -582,7 +582,7 @@ fun SettingsScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = "CREATED BY CYCY",
+                                    text = "CREATED BY CY",
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Black,
                                     color = UzzapOrange,
@@ -602,7 +602,7 @@ fun SettingsScreen(
 
                     // Tribute & Story Description
                     Text(
-                        text = "Crafted with love by CyCy for the timeless Filipino mobile chatting community. A modern homage to the legendary Uzzap service originally engineered by Smart Communications & Kolipri on Java ME / MIDP (2004–2012).",
+                        text = "Crafted with love by Cy for the timeless Filipino mobile chatting community. A modern homage to the legendary Uzzap service originally built with Kolipri on Java ME / MIDP (2004–2012).",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurface,
                         lineHeight = 18.sp

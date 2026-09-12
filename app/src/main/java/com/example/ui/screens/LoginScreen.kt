@@ -60,6 +60,7 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -81,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.ui.theme.UzzapOrange
+import kotlinx.coroutines.delay
 
 private val AVATAR_OPTIONS = listOf(
     "😎", "😊", "🚀", "🌺", "🇵🇭", "🎮", "🎧", "⭐", "🔥", "🐶", "🐱", "📱", "🏖️", "🏄", "☕"
@@ -115,6 +117,20 @@ fun LoginScreen(
 
     // Local validation feedback
     var localError by remember { mutableStateOf<String?>(null) }
+    var signUpLoadingMessage by remember { mutableStateOf("Connecting...") }
+
+    LaunchedEffect(isLoading, selectedTab) {
+        if (!isLoading || selectedTab != 1) {
+            signUpLoadingMessage = "Connecting..."
+            return@LaunchedEffect
+        }
+
+        signUpLoadingMessage = "Connecting..."
+        delay(SIGN_UP_STAGE_DURATION_MILLIS)
+        signUpLoadingMessage = "Authenticating..."
+        delay(SIGN_UP_STAGE_DURATION_MILLIS)
+        signUpLoadingMessage = "Initializing..."
+    }
 
     val displayedError = errorMessage ?: localError
 
@@ -164,7 +180,7 @@ fun LoginScreen(
             )
 
             Text(
-                text = "Philippine Mobile Messenger • Smart Communications",
+                text = "Philippine Mobile Messenger",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium
@@ -466,7 +482,7 @@ fun LoginScreen(
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    text = "Connecting to Firestore...",
+                                    text = "Connecting...",
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -812,7 +828,7 @@ fun LoginScreen(
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    text = "Creating Firestore Account...",
+                                    text = signUpLoadingMessage,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -875,3 +891,5 @@ fun LoginScreen(
         }
     }
 }
+
+private const val SIGN_UP_STAGE_DURATION_MILLIS = 700L
