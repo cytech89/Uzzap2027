@@ -23,7 +23,20 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
+
+internal fun mergeRemoteChatroom(
+    remoteRoom: ChatroomEntity,
+    localRoom: ChatroomEntity?
+): ChatroomEntity = if (localRoom == null) {
+    remoteRoom
+} else {
+    remoteRoom.copy(
+        isJoined = localRoom.isJoined,
+        userRole = localRoom.userRole
+    )
+}
 
 class UzzapRepository(
     private val database: UzzapDatabase,
@@ -54,7 +67,12 @@ class UzzapRepository(
 
     fun initCloudSync() {
         scope.launch(Dispatchers.IO) {
-            try {
+            configureCloudSync()
+        }
+    }
+
+    private suspend fun configureCloudSync() {
+        try {
                 // Wait for user profile
                 val profile = userDao.getProfile()
                 val myUsername = profile?.username ?: "juandelacruz"
@@ -69,7 +87,11 @@ class UzzapRepository(
                 }
                 firestoreService.listenToChatrooms { remoteRooms ->
                     scope.launch(Dispatchers.IO) {
-                        chatroomDao.insertAll(remoteRooms)
+                        val mergedRooms = remoteRooms.map { remoteRoom ->
+                            val localRoom = chatroomDao.getChatroomById(remoteRoom.id)
+                            mergeRemoteChatroom(remoteRoom, localRoom)
+                        }
+                        chatroomDao.insertAll(mergedRooms)
                     }
                 }
 
@@ -134,10 +156,14 @@ class UzzapRepository(
                         }
                     }
                 }
-            } catch (e: Exception) {
-                // Graceful fallback to local Room
-            }
+        } catch (e: Exception) {
+            // Graceful fallback to local Room
         }
+    }
+
+    /** Re-establishes cloud listeners while Room remains the immediate source of truth. */
+    suspend fun refreshCloudData() = withContext(Dispatchers.IO) {
+        configureCloudSync()
     }
 
     fun getMessagesForConversation(conversationId: String): Flow<List<MessageEntity>> {
@@ -268,7 +294,7 @@ class UzzapRepository(
             body = text,
             replyToBody = replyToBody,
             timestamp = now,
-            status = MessageDeliveryStatus.SENT,
+            status = MessageDeliveryStatus.SENDING,
             isFromMe = true
         )
         messageDao.insertMessage(msg)
@@ -277,11 +303,11 @@ class UzzapRepository(
         // Sync to Firestore & deliver to recipient
         val convo = conversationDao.getConversationById(conversationId)
         val recipient = convo?.recipientUsername ?: "uzzap_buddy"
-        firestoreService.sendDirectMessage(conversationId, recipient, msg)
-
-        scope.launch(Dispatchers.IO) {
-            messageDao.updateStatus(msgId, MessageDeliveryStatus.DELIVERED)
-        }
+        val result = firestoreService.sendDirectMessage(conversationId, recipient, msg)
+        messageDao.updateStatus(
+            msgId,
+            if (result.isSuccess) MessageDeliveryStatus.SENT else MessageDeliveryStatus.FAILED
+        )
     }
 
     suspend fun sendBuzz(conversationId: String) {
@@ -300,7 +326,7 @@ class UzzapRepository(
             type = MessageType.BUZZ,
             body = "BUZZED YOU!",
             timestamp = now,
-            status = MessageDeliveryStatus.SENT,
+            status = MessageDeliveryStatus.SENDING,
             isFromMe = true
         )
         messageDao.insertMessage(msg)
@@ -309,11 +335,11 @@ class UzzapRepository(
 
         val convo = conversationDao.getConversationById(conversationId)
         val recipient = convo?.recipientUsername ?: "uzzap_buddy"
-        firestoreService.sendDirectMessage(conversationId, recipient, msg)
-
-        scope.launch(Dispatchers.IO) {
-            messageDao.updateStatus(msgId, MessageDeliveryStatus.DELIVERED)
-        }
+        val result = firestoreService.sendDirectMessage(conversationId, recipient, msg)
+        messageDao.updateStatus(
+            msgId,
+            if (result.isSuccess) MessageDeliveryStatus.SENT else MessageDeliveryStatus.FAILED
+        )
     }
 
     suspend fun markConversationRead(conversationId: String) {

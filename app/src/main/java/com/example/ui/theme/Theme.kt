@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
     primary = UzzapOrange,
-    onPrimary = Color.White,
+    onPrimary = Color(0xFF2A0B00),
     primaryContainer = UzzapOrangeDark,
     onPrimaryContainer = Color.White,
     secondary = UzzapCyan,
@@ -28,7 +28,7 @@ private val DarkColorScheme = darkColorScheme(
 
 private val LightColorScheme = lightColorScheme(
     primary = UzzapOrange,
-    onPrimary = Color.White,
+    onPrimary = Color(0xFF2A0B00),
     primaryContainer = UzzapOrangeContainer,
     onPrimaryContainer = UzzapOrangeDark,
     secondary = UzzapCyan,
@@ -59,4 +59,3 @@ fun MyApplicationTheme(
         content = content
     )
 }
-

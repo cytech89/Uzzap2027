@@ -19,6 +19,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.PersistentCacheSettings
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,7 +67,7 @@ class UzzapFirestoreService(
     private val _syncStatus = MutableStateFlow(FirestoreSyncStatus.INITIALIZING)
     val syncStatus: StateFlow<FirestoreSyncStatus> = _syncStatus.asStateFlow()
 
-    private val activeListeners = mutableListOf<ListenerRegistration>()
+    private var presenceListener: ListenerRegistration? = null
     private var activeRoomListener: ListenerRegistration? = null
     private var inboxListener: ListenerRegistration? = null
     private var friendRequestsListener: ListenerRegistration? = null
@@ -323,8 +324,9 @@ class UzzapFirestoreService(
     fun listenToUsersPresence(
         onPresenceChanged: (username: String, presence: UserPresence, statusMessage: String) -> Unit
     ) {
+        presenceListener?.remove()
         try {
-            val listener = firestore.collection(USERS_COLLECTION)
+            presenceListener = firestore.collection(USERS_COLLECTION)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
                         Log.w(TAG, "listenToUsersPresence error: ${error.message}")
@@ -344,7 +346,6 @@ class UzzapFirestoreService(
                         }
                     }
                 }
-            activeListeners.add(listener)
         } catch (e: Exception) {
             Log.w(TAG, "Error setting up presence listener: ${e.message}")
         }
@@ -536,57 +537,60 @@ class UzzapFirestoreService(
     // 1-ON-1 DIRECT MESSAGES & BUZZ
     // ==========================================
 
-    fun sendDirectMessage(
+    suspend fun sendDirectMessage(
         conversationId: String,
         recipientUsername: String,
         message: MessageEntity
-    ) {
-        scope.launch(Dispatchers.IO) {
-            try {
-                val msgData = hashMapOf<String, Any>(
-                    "id" to message.id,
-                    "conversationId" to conversationId,
-                    "senderUsername" to message.senderUsername,
-                    "senderDisplayName" to message.senderDisplayName,
-                    "recipientUsername" to recipientUsername,
-                    "type" to message.type.name,
-                    "body" to message.body,
-                    "timestamp" to message.timestamp,
-                    "status" to message.status.name
-                )
-                message.replyToBody?.let { msgData["replyToBody"] = it }
+    ): Result<Unit> = try {
+        val msgData = hashMapOf<String, Any>(
+            "id" to message.id,
+            "conversationId" to conversationId,
+            "senderUsername" to message.senderUsername,
+            "senderDisplayName" to message.senderDisplayName,
+            "recipientUsername" to recipientUsername,
+            "type" to message.type.name,
+            "body" to message.body,
+            "timestamp" to message.timestamp,
+            "status" to MessageDeliveryStatus.SENT.name
+        )
+        message.replyToBody?.let { msgData["replyToBody"] = it }
 
-                // 1. Write to conversation shared message history
-                firestore.collection(CONVERSATIONS_COLLECTION)
-                    .document(conversationId)
-                    .collection(CONVO_MESSAGES_SUBCOLLECTION)
-                    .document(message.id)
-                    .set(msgData)
+        val messageRef = firestore.collection(CONVERSATIONS_COLLECTION)
+            .document(conversationId)
+            .collection(CONVO_MESSAGES_SUBCOLLECTION)
+            .document(message.id)
 
-                // 2. Update conversation overview
-                val convoData = hashMapOf<String, Any>(
-                    "id" to conversationId,
-                    "lastMessage" to message.body,
-                    "lastTimestamp" to message.timestamp,
-                    "lastSender" to message.senderUsername,
-                    "participants" to listOf(message.senderUsername, recipientUsername)
-                )
-                firestore.collection(CONVERSATIONS_COLLECTION)
-                    .document(conversationId)
-                    .set(convoData, SetOptions.merge())
+        val convoData = hashMapOf<String, Any>(
+            "id" to conversationId,
+            "lastMessage" to message.body,
+            "lastTimestamp" to message.timestamp,
+            "lastSender" to message.senderUsername,
+            "participants" to listOf(message.senderUsername, recipientUsername)
+        )
+        val conversationRef = firestore.collection(CONVERSATIONS_COLLECTION)
+            .document(conversationId)
 
-                // 3. Post to recipient's direct inbox for instant delivery across devices
-                firestore.collection(USERS_COLLECTION)
-                    .document(recipientUsername)
-                    .collection(INBOX_SUBCOLLECTION)
-                    .document(message.id)
-                    .set(msgData)
+        val inboxRef = firestore.collection(USERS_COLLECTION)
+            .document(recipientUsername)
+            .collection(INBOX_SUBCOLLECTION)
+            .document(message.id)
 
-                Log.d(TAG, "Sent direct message to $recipientUsername via Firestore")
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed sending direct message to Firestore: ${e.message}")
-            }
-        }
+        // Commit the server history, preview, and recipient inbox atomically so
+        // optimistic local state cannot be acknowledged after a partial write.
+        firestore.batch()
+            .set(messageRef, msgData)
+            .set(conversationRef, convoData, SetOptions.merge())
+            .set(inboxRef, msgData)
+            .commit()
+            .await()
+
+        Log.d(TAG, "Sent direct message to $recipientUsername via Firestore")
+        Result.success(Unit)
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Exception) {
+        Log.w(TAG, "Failed sending direct message to Firestore: ${error.message}")
+        Result.failure(error)
     }
 
     fun listenToUserInbox(
@@ -747,8 +751,8 @@ class UzzapFirestoreService(
     }
 
     fun cleanUp() {
-        activeListeners.forEach { it.remove() }
-        activeListeners.clear()
+        presenceListener?.remove()
+        presenceListener = null
         activeRoomListener?.remove()
         inboxListener?.remove()
         friendRequestsListener?.remove()

@@ -23,6 +23,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.Code
@@ -37,11 +39,9 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Vibration
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -74,9 +74,10 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.UserProfileEntity
 import com.example.data.remote.firestore.FirestoreSyncStatus
 import com.example.ui.components.UzzapAvatar
+import com.example.ui.components.syncStatusContainerColor
+import com.example.ui.components.syncStatusContentColor
 import com.example.ui.theme.UzzapCyan
 import com.example.ui.theme.UzzapOrange
-import com.example.ui.theme.UzzapOrangeContainer
 
 @Composable
 fun SettingsScreen(
@@ -226,7 +227,7 @@ fun SettingsScreen(
 
                     // Sound Effects
                     SettingSwitchItem(
-                        icon = Icons.Default.VolumeUp,
+                        icon = Icons.AutoMirrored.Filled.VolumeUp,
                         title = "Retro Sound Effects & Buzzer",
                         subtitle = "Play nostalgic Uzzap chime for incoming messages and BUZZ",
                         checked = soundEffectsEnabled,
@@ -268,7 +269,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     SettingSwitchItem(
-                        icon = Icons.Default.Send,
+                        icon = Icons.AutoMirrored.Filled.Send,
                         title = "Enter Key Sends Message",
                         subtitle = "Pressing enter on keyboard instantly sends your text",
                         checked = enterKeySends,
@@ -356,12 +357,7 @@ fun SettingsScreen(
 
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = when (firestoreSyncStatus) {
-                                FirestoreSyncStatus.CONNECTED -> Color(0xFFE8F5E9)
-                                FirestoreSyncStatus.SYNCING -> UzzapOrangeContainer
-                                FirestoreSyncStatus.OFFLINE_CACHE -> Color(0xFFE3F2FD)
-                                else -> MaterialTheme.colorScheme.surfaceVariant
-                            }
+                            color = syncStatusContainerColor(firestoreSyncStatus)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -372,12 +368,7 @@ fun SettingsScreen(
                                         .size(8.dp)
                                         .clip(CircleShape)
                                         .background(
-                                            when (firestoreSyncStatus) {
-                                                FirestoreSyncStatus.CONNECTED -> Color(0xFF2E7D32)
-                                                FirestoreSyncStatus.SYNCING -> UzzapOrange
-                                                FirestoreSyncStatus.OFFLINE_CACHE -> Color(0xFF1976D2)
-                                                else -> Color.Gray
-                                            }
+                                            syncStatusContentColor(firestoreSyncStatus)
                                         )
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -385,12 +376,7 @@ fun SettingsScreen(
                                     text = firestoreSyncStatus.label,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = when (firestoreSyncStatus) {
-                                        FirestoreSyncStatus.CONNECTED -> Color(0xFF2E7D32)
-                                        FirestoreSyncStatus.SYNCING -> UzzapOrange
-                                        FirestoreSyncStatus.OFFLINE_CACHE -> Color(0xFF1976D2)
-                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                    }
+                                    color = syncStatusContentColor(firestoreSyncStatus)
                                 )
                             }
                         }
@@ -559,7 +545,7 @@ fun SettingsScreen(
                         ) {
                             Text(
                                 text = "U",
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onPrimary,
                                 fontSize = 26.sp,
                                 fontWeight = FontWeight.Black
                             )
@@ -622,7 +608,7 @@ fun SettingsScreen(
                                 Icon(
                                     imageVector = Icons.Default.Favorite,
                                     contentDescription = null,
-                                    tint = Color.White,
+                                    tint = MaterialTheme.colorScheme.onPrimary,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -888,7 +874,7 @@ fun SettingsScreen(
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = UzzapOrange,
-                        contentColor = Color.White
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     shape = RoundedCornerShape(8.dp)
                 ) {

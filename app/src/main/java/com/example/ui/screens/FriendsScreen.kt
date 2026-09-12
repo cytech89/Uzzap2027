@@ -22,7 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ElectricBolt
@@ -56,10 +56,9 @@ import com.example.data.model.ContactCategory
 import com.example.data.model.ContactEntity
 import com.example.data.model.UserPresence
 import com.example.ui.components.EmptyListState
+import com.example.ui.components.RefreshableScreen
 import com.example.ui.components.UzzapAvatar
-import com.example.ui.theme.BorderLight
 import com.example.ui.theme.UzzapOrange
-import com.example.ui.theme.UzzapOrangeContainer
 
 @Composable
 fun FriendsScreen(
@@ -74,6 +73,8 @@ fun FriendsScreen(
     onAcceptRequest: (String) -> Unit,
     onDeclineRequest: (String) -> Unit,
     onAddContactClick: () -> Unit,
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val categories = listOf("All", "Online", "Frequent", "Requests", "Chatterbox")
@@ -94,7 +95,11 @@ fun FriendsScreen(
         matchesSearch && matchesCategory
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    RefreshableScreen(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = modifier.fillMaxSize()
+    ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 88.dp)
@@ -266,7 +271,7 @@ fun FriendsScreen(
                             text = "${contacts.count { it.presence == UserPresence.ONLINE }} Online",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF10B981)
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
                 }
@@ -294,7 +299,7 @@ fun FriendsScreen(
         FloatingActionButton(
             onClick = onAddContactClick,
             containerColor = UzzapOrange,
-            contentColor = Color.White,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 16.dp, bottom = 16.dp)
@@ -371,11 +376,15 @@ fun ContactRow(
             // Quick Chat Button & Favorite
             IconButton(
                 onClick = onFavoriteToggle,
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier.size(48.dp)
             ) {
                 Icon(
                     imageVector = if (contact.isFavorite) Icons.Default.Star else Icons.Outlined.StarBorder,
-                    contentDescription = "Favorite",
+                    contentDescription = if (contact.isFavorite) {
+                        "Remove ${contact.displayName} from favorites"
+                    } else {
+                        "Add ${contact.displayName} to favorites"
+                    },
                     tint = if (contact.isFavorite) Color(0xFFF59E0B) else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
@@ -383,11 +392,11 @@ fun ContactRow(
 
             IconButton(
                 onClick = onClick,
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier.size(48.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Chat,
-                    contentDescription = "Chat",
+                    imageVector = Icons.AutoMirrored.Filled.Chat,
+                    contentDescription = "Chat with ${contact.displayName}",
                     tint = UzzapOrange,
                     modifier = Modifier.size(20.dp)
                 )
@@ -439,14 +448,14 @@ fun FriendRequestCard(
             IconButton(
                 onClick = onAccept,
                 modifier = Modifier
-                    .size(34.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF10B981))
+                    .background(MaterialTheme.colorScheme.secondaryContainer)
             ) {
                 Icon(
                     imageVector = Icons.Default.Check,
-                    contentDescription = "Accept",
-                    tint = Color.White,
+                    contentDescription = "Accept ${request.displayName}'s buddy request",
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -456,18 +465,17 @@ fun FriendRequestCard(
             IconButton(
                 onClick = onDecline,
                 modifier = Modifier
-                    .size(34.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFEF4444).copy(alpha = 0.2f))
+                    .background(MaterialTheme.colorScheme.errorContainer)
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "Decline",
-                    tint = Color(0xFFEF4444),
+                    contentDescription = "Decline ${request.displayName}'s buddy request",
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
                     modifier = Modifier.size(18.dp)
                 )
             }
         }
     }
 }
-
