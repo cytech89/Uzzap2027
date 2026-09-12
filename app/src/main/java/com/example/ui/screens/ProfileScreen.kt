@@ -71,6 +71,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.ChatroomEntity
@@ -138,22 +140,26 @@ fun ProfileScreen(
                             presence = profile?.status ?: UserPresence.ONLINE,
                             size = 80
                         )
-                        Surface(
-                            onClick = { showEditProfileDialog = true },
-                            shape = CircleShape,
-                            color = UzzapOrange,
+                        Box(
+                            contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .size(28.dp)
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .clickable { showEditProfileDialog = true }
                                 .testTag("avatar_edit_button")
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit Avatar",
-                                tint = Color.White,
-                                modifier = Modifier
-                                    .padding(6.dp)
-                                    .size(16.dp)
-                            )
+                            Surface(
+                                shape = CircleShape,
+                                color = UzzapOrange,
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit Avatar",
+                                    tint = Color.White,
+                                    modifier = Modifier.padding(6.dp)
+                                )
+                            }
                         }
                     }
 
@@ -167,7 +173,11 @@ fun ProfileScreen(
                             text = profile?.displayName ?: "Juan Dela Cruz",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Black,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Icon(
@@ -188,7 +198,10 @@ fun ProfileScreen(
                             text = "@${profile?.username ?: "juandelacruz"}",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         IconButton(
