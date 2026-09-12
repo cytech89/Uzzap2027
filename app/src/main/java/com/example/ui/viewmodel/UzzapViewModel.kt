@@ -2,6 +2,7 @@ package com.example.ui.viewmodel
 
 import android.app.Application
 import android.content.Context
+import android.os.SystemClock
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,7 +18,9 @@ import com.example.data.model.UserPresence
 import com.example.data.model.UserProfileEntity
 import com.example.data.remote.firestore.FirestoreSyncStatus
 import com.example.data.repository.UzzapRepository
+import com.example.ui.auth.AUTH_PROGRESS_TOTAL_DURATION_MILLIS
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,7 +28,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 enum class MainTab(val title: String) {
@@ -387,10 +389,12 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
 
     fun signIn(usernameOrPhone: String, pin: String) {
         viewModelScope.launch {
+            val progressStartedAt = SystemClock.elapsedRealtime()
             _authLoading.value = true
             _authError.value = null
             val result = repository.signIn(usernameOrPhone, pin)
             if (result.isSuccess) {
+                awaitMinimumAuthProgress(progressStartedAt)
                 prefs.edit { putBoolean("is_logged_in", true) }
                 _isLoggedIn.value = true
                 _currentTab.value = MainTab.BUDDIES
@@ -411,6 +415,7 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
         statusMessage: String
     ) {
         viewModelScope.launch {
+            val progressStartedAt = SystemClock.elapsedRealtime()
             _authLoading.value = true
             _authError.value = null
             val result = repository.signUp(
@@ -422,6 +427,7 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
                 statusMessage = statusMessage
             )
             if (result.isSuccess) {
+                awaitMinimumAuthProgress(progressStartedAt)
                 prefs.edit { putBoolean("is_logged_in", true) }
                 _isLoggedIn.value = true
                 _currentTab.value = MainTab.BUDDIES
@@ -430,6 +436,16 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
                 _authError.value = result.exceptionOrNull()?.localizedMessage ?: "Sign up failed"
             }
             _authLoading.value = false
+        }
+    }
+
+    private suspend fun awaitMinimumAuthProgress(startedAtMillis: Long) {
+        val remainingMillis = remainingAuthProgressMillis(
+            startedAtMillis = startedAtMillis,
+            nowMillis = SystemClock.elapsedRealtime()
+        )
+        if (remainingMillis > 0) {
+            delay(remainingMillis)
         }
     }
 
@@ -472,3 +488,6 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
         super.onCleared()
     }
 }
+
+internal fun remainingAuthProgressMillis(startedAtMillis: Long, nowMillis: Long): Long =
+    (AUTH_PROGRESS_TOTAL_DURATION_MILLIS - (nowMillis - startedAtMillis)).coerceAtLeast(0L)

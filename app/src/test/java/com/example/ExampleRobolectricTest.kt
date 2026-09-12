@@ -84,6 +84,7 @@ class ExampleRobolectricTest {
     val merged = mergeRemoteChatroom(remote, local)
 
     assertEquals("Updated topic", merged.topic)
+    assertEquals("Region VII (Central Visayas)", merged.category)
     assertEquals(8, merged.chatterCount)
     assertEquals(true, merged.isJoined)
     assertEquals(RoomRole.MODERATOR, merged.userRole)

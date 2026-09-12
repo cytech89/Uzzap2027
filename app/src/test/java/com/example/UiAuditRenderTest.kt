@@ -15,7 +15,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import com.example.data.model.ChatroomEntity
 import com.example.data.model.ContactCategory
@@ -183,7 +182,7 @@ class UiAuditRenderTest {
 
     @Test
     @Config(qualifiers = "w320dp-h640dp-mdpi", sdk = [36])
-    fun signUpLoadingShowsProgressStagesInOrder() {
+    fun signInLoadingShowsLargeUppercaseProgressStagesInOrder() {
         composeTestRule.mainClock.autoAdvance = false
         composeTestRule.setContent {
             MyApplicationTheme {
@@ -191,17 +190,16 @@ class UiAuditRenderTest {
             }
         }
 
-        composeTestRule.onNodeWithTag("signup_tab").performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Connecting...").assertExists()
+        composeTestRule.onNodeWithText("CONNECTING...").assertExists()
 
         composeTestRule.mainClock.advanceTimeBy(800L)
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Authenticating...").assertExists()
+        composeTestRule.onNodeWithText("AUTHENTICATING...").assertExists()
 
         composeTestRule.mainClock.advanceTimeBy(800L)
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Initializing...").assertExists()
+        composeTestRule.onNodeWithText("INITIALIZING...").assertExists()
     }
 
     private fun renderAuditMatrix(darkTheme: Boolean, variant: String) {

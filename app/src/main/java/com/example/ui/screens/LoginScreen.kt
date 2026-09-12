@@ -81,6 +81,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.ui.auth.AUTH_PROGRESS_STAGE_DURATION_MILLIS
+import com.example.ui.auth.AuthProgressStage
 import com.example.ui.theme.UzzapOrange
 import kotlinx.coroutines.delay
 
@@ -117,19 +119,19 @@ fun LoginScreen(
 
     // Local validation feedback
     var localError by remember { mutableStateOf<String?>(null) }
-    var signUpLoadingMessage by remember { mutableStateOf("Connecting...") }
+    var authProgressStage by remember { mutableStateOf(AuthProgressStage.CONNECTING) }
 
-    LaunchedEffect(isLoading, selectedTab) {
-        if (!isLoading || selectedTab != 1) {
-            signUpLoadingMessage = "Connecting..."
+    LaunchedEffect(isLoading) {
+        if (!isLoading) {
+            authProgressStage = AuthProgressStage.CONNECTING
             return@LaunchedEffect
         }
 
-        signUpLoadingMessage = "Connecting..."
-        delay(SIGN_UP_STAGE_DURATION_MILLIS)
-        signUpLoadingMessage = "Authenticating..."
-        delay(SIGN_UP_STAGE_DURATION_MILLIS)
-        signUpLoadingMessage = "Initializing..."
+        authProgressStage = AuthProgressStage.CONNECTING
+        delay(AUTH_PROGRESS_STAGE_DURATION_MILLIS)
+        authProgressStage = AuthProgressStage.AUTHENTICATING
+        delay(AUTH_PROGRESS_STAGE_DURATION_MILLIS)
+        authProgressStage = AuthProgressStage.INITIALIZING
     }
 
     val displayedError = errorMessage ?: localError
@@ -471,7 +473,7 @@ fun LoginScreen(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(50.dp)
+                                .height(54.dp)
                                 .testTag("login_button")
                         ) {
                             if (isLoading) {
@@ -482,9 +484,10 @@ fun LoginScreen(
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    text = "Connecting...",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold
+                                    text = authProgressStage.label,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 0.5.sp
                                 )
                             } else {
                                 Icon(
@@ -817,7 +820,7 @@ fun LoginScreen(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(50.dp)
+                                .height(54.dp)
                                 .testTag("signup_button")
                         ) {
                             if (isLoading) {
@@ -828,9 +831,10 @@ fun LoginScreen(
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    text = signUpLoadingMessage,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold
+                                    text = authProgressStage.label,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 0.5.sp
                                 )
                             } else {
                                 Icon(
@@ -891,5 +895,3 @@ fun LoginScreen(
         }
     }
 }
-
-private const val SIGN_UP_STAGE_DURATION_MILLIS = 700L

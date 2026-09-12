@@ -9,6 +9,7 @@ import com.example.data.model.FriendshipState
 import com.example.data.model.MessageDeliveryStatus
 import com.example.data.model.MessageEntity
 import com.example.data.model.MessageType
+import com.example.data.model.PhilippineRegions
 import com.example.data.model.RoomMessageEntity
 import com.example.data.model.RoomRole
 import com.example.data.model.UserPresence
@@ -29,13 +30,24 @@ import java.util.UUID
 internal fun mergeRemoteChatroom(
     remoteRoom: ChatroomEntity,
     localRoom: ChatroomEntity?
-): ChatroomEntity = if (localRoom == null) {
-    remoteRoom
-} else {
-    remoteRoom.copy(
-        isJoined = localRoom.isJoined,
-        userRole = localRoom.userRole
-    )
+): ChatroomEntity {
+    val mergedRoom = if (localRoom == null) {
+        remoteRoom
+    } else {
+        remoteRoom.copy(
+            isJoined = localRoom.isJoined,
+            userRole = localRoom.userRole
+        )
+    }
+    val officialProvince = PhilippineRegions.getProvinceByRoomId(remoteRoom.id)
+    return if (officialProvince == null) {
+        mergedRoom
+    } else {
+        mergedRoom.copy(
+            name = officialProvince.roomTag,
+            category = officialProvince.region
+        )
+    }
 }
 
 class UzzapRepository(
