@@ -81,7 +81,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.ui.theme.UzzapOrange
-import com.example.ui.theme.UzzapOrangeContainer
 
 private val AVATAR_OPTIONS = listOf(
     "😎", "😊", "🚀", "🌺", "🇵🇭", "🎮", "🎧", "⭐", "🔥", "🐶", "🐱", "📱", "🏖️", "🏄", "☕"
@@ -448,7 +447,7 @@ fun LoginScreen(
                             enabled = !isLoading,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = UzzapOrange,
-                                contentColor = Color.White
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             ),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
@@ -458,7 +457,7 @@ fun LoginScreen(
                         ) {
                             if (isLoading) {
                                 CircularProgressIndicator(
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onPrimary,
                                     modifier = Modifier.size(20.dp),
                                     strokeWidth = 2.dp
                                 )
@@ -720,7 +719,13 @@ fun LoginScreen(
                                     modifier = Modifier
                                         .size(44.dp)
                                         .clip(CircleShape)
-                                        .background(if (isSelected) UzzapOrangeContainer else MaterialTheme.colorScheme.surfaceVariant)
+                                        .background(
+                                            if (isSelected) {
+                                                MaterialTheme.colorScheme.primaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.surfaceVariant
+                                            }
+                                        )
                                         .border(
                                             width = if (isSelected) 2.dp else 1.dp,
                                             color = if (isSelected) UzzapOrange else Color.Transparent,
@@ -740,7 +745,7 @@ fun LoginScreen(
                                             Icon(
                                                 imageVector = Icons.Default.Check,
                                                 contentDescription = null,
-                                                tint = Color.White,
+                                                tint = MaterialTheme.colorScheme.onPrimary,
                                                 modifier = Modifier.size(10.dp).align(Alignment.Center)
                                             )
                                         }
@@ -808,7 +813,7 @@ fun LoginScreen(
                             enabled = !isLoading,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = UzzapOrange,
-                                contentColor = Color.White
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             ),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
@@ -818,7 +823,7 @@ fun LoginScreen(
                         ) {
                             if (isLoading) {
                                 CircularProgressIndicator(
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onPrimary,
                                     modifier = Modifier.size(20.dp),
                                     strokeWidth = 2.dp
                                 )

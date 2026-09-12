@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 enum class MainTab(val title: String) {
@@ -82,6 +83,9 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _authError = MutableStateFlow<String?>(null)
     val authError: StateFlow<String?> = _authError.asStateFlow()
+
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     // Settings State
     private val settingsPrefs = application.getSharedPreferences("uzzap_settings", Context.MODE_PRIVATE)
@@ -149,6 +153,20 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
         _currentTab.value = tab
     }
 
+    fun refreshData() {
+        if (_isRefreshing.value) return
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            try {
+                repository.refreshCloudData()
+                // Keep the Material indicator readable while listeners reconnect.
+                delay(400)
+            } finally {
+                _isRefreshing.value = false
+            }
+        }
+    }
+
     fun openConversation(conversationId: String) {
         _activeConversationId.value = conversationId
         viewModelScope.launch {
@@ -160,7 +178,6 @@ class UzzapViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val convoId = repository.startOrGetConversation(contact)
             _activeConversationId.value = convoId
-            _currentTab.value = MainTab.CHATS
         }
     }
 

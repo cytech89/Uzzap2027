@@ -1,5 +1,13 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -64,12 +73,7 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.ChatroomEntity
 import com.example.data.model.RoomMessageEntity
 import com.example.data.model.RoomRole
-import com.example.ui.theme.BubbleOther
-import com.example.ui.theme.BubbleSelf
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.UzzapOrange
-import com.example.ui.theme.UzzapOrangeContainer
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -90,11 +94,25 @@ fun RoomDetailScreen(
     var reportRoomReason by remember { mutableStateOf("Inappropriate Content") }
     var reportRoomDetails by remember { mutableStateOf("") }
     var reportRoomSubmitted by remember { mutableStateOf(false) }
+    var hasPositionedInitialMessages by remember { mutableStateOf(false) }
+    var previousMessageCount by remember { mutableStateOf(0) }
     val listState = rememberLazyListState()
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
+            if (!hasPositionedInitialMessages) {
+                listState.scrollToItem(messages.lastIndex)
+                hasPositionedInitialMessages = true
+            } else {
+                val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                if (lastVisibleItem >= previousMessageCount - 2) {
+                    listState.animateScrollToItem(messages.lastIndex)
+                }
+            }
+            previousMessageCount = messages.size
+        } else {
+            hasPositionedInitialMessages = false
+            previousMessageCount = 0
         }
     }
 
@@ -135,7 +153,7 @@ fun RoomDetailScreen(
                     Icon(
                         imageVector = Icons.Default.Tag,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -192,7 +210,7 @@ fun RoomDetailScreen(
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = "Join Room",
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(15.dp)
                             )
                             Spacer(modifier = Modifier.width(3.dp))
@@ -271,7 +289,13 @@ fun RoomDetailScreen(
         }
 
         // Guest preview notice if user has not joined yet
-        if (room != null && !room.isJoined && onToggleJoin != null) {
+        AnimatedVisibility(
+            visible = room != null && !room.isJoined && onToggleJoin != null,
+            enter = fadeIn(tween(180)) +
+                expandVertically(tween(220, easing = FastOutSlowInEasing)),
+            exit = fadeOut(tween(140)) +
+                shrinkVertically(tween(180, easing = FastOutSlowInEasing))
+        ) {
             Surface(
                 color = UzzapOrange.copy(alpha = 0.12f),
                 modifier = Modifier.fillMaxWidth()
@@ -292,7 +316,7 @@ fun RoomDetailScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
-                        onClick = { onToggleJoin(true) },
+                        onClick = { onToggleJoin?.invoke(true) },
                         colors = ButtonDefaults.buttonColors(containerColor = UzzapOrange),
                         shape = RoundedCornerShape(6.dp),
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
@@ -323,7 +347,10 @@ fun RoomDetailScreen(
         Surface(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 4.dp,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize(tween(180, easing = FastOutSlowInEasing))
+                .imePadding()
         ) {
             Row(
                 modifier = Modifier
@@ -370,7 +397,7 @@ fun RoomDetailScreen(
                     },
                     enabled = inputText.isNotBlank(),
                     modifier = Modifier
-                        .size(42.dp)
+                        .size(48.dp)
                         .clip(CircleShape)
                         .background(if (inputText.isNotBlank()) UzzapOrange else Color.LightGray)
                         .testTag("send_room_message_button")
@@ -378,7 +405,7 @@ fun RoomDetailScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "Send",
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -513,20 +540,19 @@ fun RoomMessageItem(
         val isLeave = lowerText.contains("left") || lowerText.contains("leave") || lowerText.contains("leaves")
 
         val containerColor = when {
-            isJoin -> Color(0xFFE8F5E9)
-            isLeave -> Color(0xFFFFEBEE)
-            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
+            isJoin -> MaterialTheme.colorScheme.secondaryContainer
+            isLeave -> MaterialTheme.colorScheme.errorContainer
+            else -> MaterialTheme.colorScheme.surfaceVariant
         }
 
         val borderColor = when {
-            isJoin -> Color(0xFFC8E6C9)
-            isLeave -> Color(0xFFFFCDD2)
-            else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            isJoin || isLeave -> Color.Transparent
+            else -> MaterialTheme.colorScheme.outlineVariant
         }
 
         val textColor = when {
-            isJoin -> Color(0xFF1B5E20)
-            isLeave -> Color(0xFFB71C1C)
+            isJoin -> MaterialTheme.colorScheme.onSecondaryContainer
+            isLeave -> MaterialTheme.colorScheme.onErrorContainer
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
 
@@ -585,9 +611,13 @@ fun RoomMessageItem(
 
     val isMe = message.isFromMe
     val alignment = if (isMe) Alignment.End else Alignment.Start
-    val bubbleColor = if (isMe) BubbleSelf else BubbleOther
-    val textColor = if (isMe) Color.White else TextPrimary
-    val timestampColor = if (isMe) Color.White.copy(alpha = 0.85f) else TextSecondary
+    val bubbleColor = if (isMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+    val textColor = if (isMe) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    val timestampColor = if (isMe) {
+        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.78f)
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     Column(
         modifier = modifier
@@ -628,7 +658,10 @@ fun RoomMessageItem(
 
         Card(
             colors = CardDefaults.cardColors(containerColor = bubbleColor),
-            border = if (isMe) null else androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+            border = if (isMe) null else androidx.compose.foundation.BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant
+            ),
             shape = RoundedCornerShape(12.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
